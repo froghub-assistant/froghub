@@ -76,6 +76,7 @@ function run(cmd: string[], options: { cwd?: string; allowFail?: boolean } = {})
 }
 
 const has = (command: string) => spawnSync('sh', ['-c', `command -v ${command}`]).status === 0
+const works = (cmd: string) => spawnSync('sh', ['-c', `${cmd} >/dev/null 2>&1`]).status === 0
 
 function write(path: string, text: string, mode?: number): void {
   if (DRY) return say(`\x1b[2m(would write ${path})\x1b[0m`)
@@ -217,6 +218,12 @@ run(['bun', 'run', 'build'], { cwd: REPO })
 const sudo = existsSync(webRoot) && spawnSync('test', ['-w', webRoot]).status === 0 ? [] : ['sudo']
 run([...sudo, 'mkdir', '-p', webRoot])
 run([...sudo, 'rsync', '-a', '--delete', `${join(REPO, 'dist')}/`, `${webRoot}/`])
+// SELinux (Fedora, RHEL, Rocky, Alma…): the web server may only read files labelled as web content, and a new
+// /var/www made by mkdir isn't. New files inherit the folder's label, so ./deploy.sh keeps working after this.
+if (works('selinuxenabled')) {
+  if (has('semanage')) run(['sudo', 'semanage', 'fcontext', '-a', '-t', 'httpd_sys_content_t', `${webRoot}(/.*)?`], { allowFail: true })
+  run(['sudo', 'chcon', '-R', '-t', 'httpd_sys_content_t', webRoot], { allowFail: true })
+}
 
 // ---- 4. the web server ----
 
@@ -258,7 +265,6 @@ if (new RegExp(`^${host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[,{]`, 'm').t
 // ---- 5. voice ----
 
 heading('Voice (wake word, speech-to-text and the voices, all on this computer)')
-const works = (cmd: string) => spawnSync('sh', ['-c', `${cmd} >/dev/null 2>&1`]).status === 0
 // Just after install.sh, the docker group isn't active until you log in again, so fall back to sudo
 const sudoDocker = has('docker') && !works('docker info') ? ['sudo', '-E'] : []
 const compose = works('docker compose version') ? [...sudoDocker, 'docker', 'compose']
