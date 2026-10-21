@@ -1,5 +1,5 @@
 #!/bin/sh
-# Frog Hub installer for a fresh Raspberry Pi OS / Debian / Ubuntu or Fedora / RHEL / CentOS Stream machine:
+# Frog Hub installer for a fresh Raspberry Pi OS / Debian / Ubuntu or Fedora / RHEL / CentOS Stream / Rocky / Alma machine:
 #   curl -fsSL https://raw.githubusercontent.com/froghub-assistant/froghub/master/install.sh | sh
 # Installs what Frog Hub needs (git, Bun, Caddy, tmux, rsync), fetches it to ~/froghub (or updates it), then runs
 # `bun run setup`, which asks the questions. Run it again to update; your settings in ~/.config/froghub are kept.
@@ -16,7 +16,7 @@ if command -v apt-get >/dev/null; then
 elif command -v dnf >/dev/null; then
 	pm=dnf
 else
-	echo "This installer needs apt (Raspberry Pi OS, Debian, Ubuntu) or dnf (Fedora, RHEL, CentOS Stream)."
+	echo "This installer needs apt (Raspberry Pi OS, Debian, Ubuntu) or dnf (Fedora, RHEL, CentOS Stream, Rocky, Alma, Oracle Linux)."
 	exit 1
 fi
 
@@ -25,9 +25,15 @@ if [ "$pm" = apt ]; then
 	sudo apt-get update -qq
 	sudo apt-get install -y -qq git curl unzip tmux rsync caddy
 else
-	# Fedora has Caddy; RHEL and CentOS Stream get it from EPEL
-	if ! grep -qi fedora /etc/os-release && ! rpm -q epel-release >/dev/null 2>&1; then
-		sudo dnf install -y -q epel-release || echo "(Couldn't add EPEL; on RHEL see https://docs.fedoraproject.org/en-US/epel/)"
+	# Fedora has Caddy; the RHEL family (RHEL, CentOS Stream, Rocky, Alma, Oracle) gets it from EPEL, which wants
+	# CRB (CodeReady Builder) on too. Rocky, Alma and CentOS ship epel-release; RHEL itself needs it by URL.
+	if ! grep -q '^ID=fedora' /etc/os-release && ! rpm -q epel-release >/dev/null 2>&1; then
+		sudo dnf install -y -q dnf-plugins-core
+		sudo dnf config-manager --set-enabled crb 2>/dev/null || sudo dnf config-manager --set-enabled powertools 2>/dev/null || true
+		major=$(. /etc/os-release && echo "${VERSION_ID%%.*}")
+		sudo dnf install -y -q epel-release ||
+			sudo dnf install -y -q "https://dl.fedoraproject.org/pub/epel/epel-release-latest-$major.noarch.rpm" ||
+			echo "(Couldn't add EPEL; see https://docs.fedoraproject.org/en-US/epel/)"
 	fi
 	sudo dnf install -y -q git curl unzip tmux rsync caddy
 	sudo systemctl enable --now caddy
