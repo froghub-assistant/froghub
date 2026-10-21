@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "defaultMode": "dontAsk",
+    "allow": [
+      "WebSearch",
+      "Read({{MEMORY}}/**)",
+      "Edit({{MEMORY}}/**)",
+      "mcp__froghub__reply",
+      "mcp__froghub__get_weather",
+      "mcp__froghub__set_alarm",
+      "mcp__froghub__set_timer",
+      "mcp__froghub__list_alarms",
+      "mcp__froghub__cancel_alarm",
+      "mcp__froghub__show_on_screen",
+      "mcp__froghub__send_message"
+    ],
+    "deny": ["Bash", "WebFetch"]
+  }
+}

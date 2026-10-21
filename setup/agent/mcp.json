@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "froghub": {
+      "type": "stdio",
+      "command": "{{BUN}}",
+      "args": ["run", "--cwd", "{{CHANNEL_DIR}}", "--silent", "start"]
+    }
+  }
+}

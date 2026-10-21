@@ -1,0 +1,33 @@
+# Frog Hub's voice, all local: openWakeWord (wake word), Whisper (speech-to-text) and Piper (the personalities'
+# voices). `bun run setup` starts these and adds them to Home Assistant (Wyoming integration) for you; by hand:
+#   VOICE_BIND=127.0.0.1 docker compose -f setup/voice/compose.yaml up -d   (VOICE_BIND: the address HA reaches them on)
+# then in HA: Settings → Devices & services → Add integration → Wyoming Protocol, once per port below.
+# On a slow machine, Whisper's base-int8 model is the right size; tiny-int8 is faster, small-int8 more accurate.
+services:
+  openwakeword:
+    container_name: froghub-openwakeword
+    image: rhasspy/wyoming-openwakeword:latest
+    command: --preload-model hey_jarvis --custom-model-dir /custom
+    volumes:
+      - ./data/openwakeword:/custom
+    ports:
+      - "${VOICE_BIND:-127.0.0.1}:10400:10400"
+    restart: unless-stopped
+  whisper:
+    container_name: froghub-whisper
+    image: rhasspy/wyoming-whisper:latest
+    command: --model base-int8 --language en --beam-size 1 --initial-prompt "Verity, Falsity, Lovity, Frog."
+    volumes:
+      - ./data/whisper:/data
+    ports:
+      - "${VOICE_BIND:-127.0.0.1}:10300:10300"
+    restart: unless-stopped
+  piper:
+    container_name: froghub-piper
+    image: rhasspy/wyoming-piper:latest
+    command: --voice en_GB-northern_english_male-medium
+    volumes:
+      - ./data/piper:/data
+    ports:
+      - "${VOICE_BIND:-127.0.0.1}:10200:10200"
+    restart: unless-stopped

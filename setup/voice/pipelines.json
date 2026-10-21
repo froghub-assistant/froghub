@@ -1,0 +1,6 @@
+[
+  { "name": "Frog Hub · Frog", "tts_language": "en_GB", "tts_voice": "en_GB-northern_english_male-medium" },
+  { "name": "Frog Hub · Verity", "tts_language": "en_US", "tts_voice": "en_US-ryan-medium" },
+  { "name": "Frog Hub · Falsity", "tts_language": "en_GB", "tts_voice": "en_GB-jenny_dioco-medium" },
+  { "name": "Frog Hub · Lovity", "tts_language": "en_US", "tts_voice": "en_US-kristin-medium" }
+]

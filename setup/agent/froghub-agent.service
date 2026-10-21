@@ -1,0 +1,16 @@
+[Unit]
+Description=Frog Hub assistant, Claude Code on Haiku in tmux (attach with: tmux -L froghub attach -t froghub)
+After=network-online.target
+
+[Service]
+Type=forking
+# Its own tmux server (-L froghub), so restarting it never touches any other tmux session
+ExecStart={{TMUX}} -L froghub new-session -d -s froghub -x 200 -y 50 {{AGENT_DIR}}/start
+# Accept the start-up questions (development channels warning; folder trust the first time)
+ExecStartPost={{AGENT_DIR}}/accept-channels
+ExecStop={{TMUX}} -L froghub kill-session -t froghub
+RemainAfterExit=yes
+TimeoutStartSec=240
+
+[Install]
+WantedBy=default.target

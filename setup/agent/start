@@ -1,0 +1,19 @@
+#!/bin/bash
+# Frog Hub's assistant: a separate, locked-down Claude Code session on Haiku with its own memory.
+# Only tools: web search, its own memory files, and the froghub channel's reply, get_weather, alarm, show_on_screen and
+# send_message tools. Made by `bun run setup` from setup/agent/ in the Frog Hub repo.
+export PATH="$HOME/.local/bin:$HOME/.bun/bin:$PATH"
+cd "$(dirname "$0")" || exit 1
+# Pick up the last conversation if there is one (Claude Code keeps them under ~/.claude/projects/<this folder>)
+continue=()
+compgen -G "$HOME/.claude/projects/$(pwd | sed 's/[^a-zA-Z0-9]/-/g')/*.jsonl" >/dev/null && continue=(--continue)
+claude --model haiku --name froghub \
+    --setting-sources project,local --settings "$PWD/settings.json" \
+    --tools "Read,Write,Edit,WebSearch" \
+    --strict-mcp-config --mcp-config "$PWD/mcp.json" \
+    --permission-mode dontAsk \
+    --dangerously-load-development-channels server:froghub \
+    "${continue[@]}" "$@"
+echo
+echo "Frog Hub's assistant exited. Run $PWD/start to start it again."
+exec bash -l

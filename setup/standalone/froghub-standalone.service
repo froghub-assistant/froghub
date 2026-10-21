@@ -1,0 +1,13 @@
+[Unit]
+Description=Frog Hub assistant (standalone: Anthropic API or an OpenAI-compatible server such as LM Studio)
+After=network-online.target
+
+[Service]
+WorkingDirectory={{CHANNEL_DIR}}
+EnvironmentFile={{ENV_FILE}}
+ExecStart={{BUN}} standalone.ts
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,164 @@
+:root {
+  --bg: #0b1d12;
+  --card: #12291a;
+  --line: #24452f;
+  --fg: #eaffea;
+  --muted: #94b89b;
+  --accent: #5bd16b;
+  --danger: #f87171;
+  color-scheme: dark;
+}
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  cursor: pointer;
+}
+.card {
+  margin-bottom: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+}
+.card h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 14px;
+}
+label.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+}
+input,
+select,
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--fg);
+  font: inherit;
+  font-size: 16px;
+}
+input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.primary,
+.ghost,
+.danger {
+  padding: 9px 16px;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 600;
+}
+.primary {
+  border: 0;
+  background: var(--accent);
+  color: var(--bg);
+}
+.primary:disabled {
+  opacity: 0.5;
+}
+.ghost {
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--fg);
+}
+.danger {
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: none;
+  color: var(--danger);
+}
+.link {
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.seg {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.seg button {
+  flex: 1;
+  padding: 10px;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-weight: 600;
+}
+.seg button.on {
+  background: var(--accent);
+  color: var(--bg);
+}
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.list li:first-child {
+  border-top: 0;
+}
+.muted {
+  color: var(--muted);
+}
+.ok {
+  margin: 8px 0 0;
+  color: var(--accent);
+}
+.error {
+  margin: 8px 0;
+  color: var(--danger);
+}
+
+/* Chrome 59 (Fire OS 5's WebView) has no gaps in flexbox: margins instead, only where gap isn't known */
+@supports not (gap: 1px) {
+  .row > *,
+  nav > * {
+    margin: 0 8px 8px 0;
+  }
+  .list li > * + *,
+  label.check > * + *,
+  nav button > * + * {
+    margin-left: 10px;
+  }
+}

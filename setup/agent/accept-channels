@@ -1,0 +1,16 @@
+#!/bin/sh
+# Answers Claude Code's start-up questions in tmux session froghub (its own tmux server, -L froghub), for up to three
+# minutes: the "Loading development channels" warning on every start, and "do you trust this folder?" on the first.
+for _ in $(seq 90); do
+	pane=$(tmux -L froghub capture-pane -pt froghub 2>/dev/null)
+	if echo "$pane" | grep -q 'I am using this for local development'; then
+		tmux -L froghub send-keys -t froghub Enter
+		exit 0
+	fi
+	if echo "$pane" | grep -qi 'trust'; then
+		tmux -L froghub send-keys -t froghub Enter # the first choice is "Yes, proceed"
+		sleep 3
+	fi
+	sleep 2
+done
+exit 0
