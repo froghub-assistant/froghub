@@ -13,7 +13,9 @@ and Docker for the voice. Then:
 curl -fsSL https://raw.githubusercontent.com/froghub-assistant/froghub/master/install.sh | sh
 ```
 
-`install.sh` installs git, Bun, Caddy, tmux and rsync (and, if you say yes, Docker and Claude Code), fetches Frog Hub
+`install.sh` works on Raspberry Pi OS, Debian and Ubuntu (apt) and on Fedora, RHEL and CentOS Stream (dnf; it also
+sets up firewalld and SELinux for Caddy). It installs git, Bun, Caddy, tmux and rsync (and, if you say yes, Docker or
+Podman for the voice, and Claude Code), fetches Frog Hub
 to `~/froghub`, then runs `bun run setup`. Already have it? `bun run setup` in the repo does the same questions.
 
 It asks for the site's address, Home Assistant's, the time zone, the children's names, a town for the weather, the

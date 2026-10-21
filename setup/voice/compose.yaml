@@ -6,7 +6,7 @@
 services:
   openwakeword:
     container_name: froghub-openwakeword
-    image: rhasspy/wyoming-openwakeword:latest
+    image: docker.io/rhasspy/wyoming-openwakeword:latest
     command: --preload-model hey_jarvis --custom-model-dir /custom
     volumes:
       - ./data/openwakeword:/custom
@@ -15,7 +15,7 @@ services:
     restart: unless-stopped
   whisper:
     container_name: froghub-whisper
-    image: rhasspy/wyoming-whisper:latest
+    image: docker.io/rhasspy/wyoming-whisper:latest
     command: --model base-int8 --language en --beam-size 1 --initial-prompt "Verity, Falsity, Lovity, Frog."
     volumes:
       - ./data/whisper:/data
@@ -24,7 +24,7 @@ services:
     restart: unless-stopped
   piper:
     container_name: froghub-piper
-    image: rhasspy/wyoming-piper:latest
+    image: docker.io/rhasspy/wyoming-piper:latest
     command: --voice en_GB-northern_english_male-medium
     volumes:
       - ./data/piper:/data
