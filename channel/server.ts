@@ -24,6 +24,7 @@ import { handleStore, isGrownUps, policy, sharedSettings } from './store.ts'
 import { handleRegistry } from './registry.ts'
 import { handleMemory } from './memory.ts'
 import { handleInstance } from './instance.ts'
+import { handlePair } from './pair.ts'
 import { type Display, displayTool, cleanDisplay } from './display.ts'
 import { handleSamples } from './samples.ts'
 import { type Screen, announce, findDisplay, handleAnnouncements, message, onlineDisplays, screenFor } from './announce.ts'
@@ -307,6 +308,7 @@ try {
       if (['/api/announcements', '/api/displays', '/api/announce'].includes(pathname)) return handleAnnouncements(req, pathname)
       if (pathname.startsWith('/api/wakeword/')) return handleSamples(req, pathname)
       if (pathname === '/api/admin/displays') return handleRegistry(req, pathname)
+      if (pathname === '/api/pair' || pathname === '/api/admin/pair') return handlePair(req, pathname)
       if (pathname === '/api/admin/memory') return handleMemory(req)
       if (req.method === 'POST' && pathname === '/local/announce') return handleAnnounce(req)
       if (req.method === 'POST' && pathname === '/api/admin/remember') {

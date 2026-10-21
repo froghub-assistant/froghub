@@ -72,6 +72,11 @@ PIN copies the connection and settings from the other Frog Hubs, or type HA's ad
 personality, who it's for and which room, a microphone check, then confetti. Admin Settings has "✨ Show the welcome
 again"; `?welcome` (or `?welcome=mic`, a step name) opens it on any display to try it out.
 
+Two ways to connect without typing a token: **📱 Scan with a phone** shows a QR code of `<site>/admin/#pair=<code>`
+(`channel/pair.ts`); a grown-up scans it, types the PIN on their phone and taps Pair it, and the display copies the
+connection and settings. **🏠 Log in with Home Assistant** goes to HA's login page and comes back with a long-lived
+token made just for that display (`src/lib/connect.js`; no setup in HA needed).
+
 Home Assistant is optional ("Skip: use it without Home Assistant"). Without it there's no voice (wake word, speech
 and replies all go through HA), room buttons or weather: typed questions are answered on screen, and alarms, 📢
 messages and cards still work. Adding HA's address and token in Settings later turns the voice on.

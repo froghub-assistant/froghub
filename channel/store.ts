@@ -91,14 +91,17 @@ function applyToAgent(p: Policy): boolean {
   return true
 }
 
+/** The shared settings as GET /api/settings gives them; with the HA token only when withToken (admin mode, pairing). */
+export function sharedSettingsFile(withToken: boolean): { settings: unknown; updated: number; token?: string } {
+  const shared = read(SETTINGS_FILE) ?? { settings: null, updated: 0 }
+  if (withToken && existsSync(TOKEN_FILE)) shared.token = readFileSync(TOKEN_FILE, 'utf8').trim()
+  return shared
+}
+
 export async function handleStore(req: Request, pathname: string): Promise<Response> {
   if (req.method === 'GET' && pathname === '/api/policy') return json(policy())
   if (req.method === 'GET' && pathname === '/api/audience') return json({ grownUps: isGrownUps(new URL(req.url).searchParams.get('device')) })
-  if (req.method === 'GET' && pathname === '/api/settings') {
-    const shared = read(SETTINGS_FILE) ?? { settings: null, updated: 0 }
-    if (adminValid(req.headers.get('x-admin-token')) && existsSync(TOKEN_FILE)) shared.token = readFileSync(TOKEN_FILE, 'utf8').trim()
-    return json(shared)
-  }
+  if (req.method === 'GET' && pathname === '/api/settings') return json(sharedSettingsFile(adminValid(req.headers.get('x-admin-token'))))
   if (req.method !== 'POST') return new Response('not found', { status: 404 })
   if (!adminValid(req.headers.get('x-admin-token'))) return json({ error: 'admin mode needed' }, 403)
   const body = await req.json().catch(() => ({}))

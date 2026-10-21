@@ -11,6 +11,7 @@
   import { personalities, personality } from './personalities.js'
   import { settings, saveSettings, SYNCED } from './settings.svelte.js'
   import { house, houseLoaded } from './house.svelte.js'
+  import { startHaLogin, pendingHaLogin, finishHaLogin, newPairing, waitForPairing } from './connect.js'
 
   let { onDone, start = 'hello' } = $props()
 
@@ -78,12 +79,8 @@
       grownUps = true
       return
     }
-    // The shared HA token and the house's settings, into the draft only: nothing is saved until Start at the end
     try {
-      const shared = await (await fetch('/api/settings', { headers: { 'X-Admin-Token': token } })).json()
-      if (shared.token) draft.token = shared.token
-      for (const k of SYNCED) if (shared.settings && k in shared.settings) draft[k] = shared.settings[k]
-      draft.syncedAt = shared.updated || 0
+      applyShared(await (await fetch('/api/settings', { headers: { 'X-Admin-Token': token } })).json())
     } catch {
       // server unreachable: falls through to typing it in
     }
@@ -93,6 +90,60 @@
       return
     }
     await tryConnection()
+  }
+
+  // The shared HA token and the house's settings, into the draft only: nothing is saved until Start at the end
+  function applyShared(shared) {
+    if (shared.token) draft.token = shared.token
+    for (const k of SYNCED) if (shared.settings && k in shared.settings) draft[k] = shared.settings[k]
+    draft.syncedAt = shared.updated || 0
+  }
+
+  // Log in with Home Assistant: the page goes to HA and comes back, so the draft goes with it
+  function logIn() {
+    startHaLogin(draft.haUrl, { ...draft, token: '' })
+  }
+  const login = pendingHaLogin()
+  if (login) {
+    Object.assign(draft, login.keep || {})
+    step = 'connect'
+    manual = true
+    checking = true
+    finishHaLogin(draft.deviceName || draft.name)
+      .then(({ haUrl, token }) => {
+        draft.haUrl = haUrl
+        draft.token = token
+        return tryConnection()
+      })
+      .catch((err) => {
+        connectNote = err.message
+        checking = false
+      })
+  }
+
+  // Pairing: a QR code for a grown-up's phone (channel/pair.ts)
+  let pairing = $state(null) // { code, svg } while waiting
+  let pairingStop = null
+  async function startPairing() {
+    connectNote = ''
+    try {
+      pairing = await newPairing()
+      pairingStop = new AbortController()
+      applyShared(await waitForPairing(pairing.code, pairingStop.signal))
+      pairing = null
+      if (draft.token) await tryConnection()
+      else {
+        connectNote = "The other Frog Hubs haven't shared a Home Assistant token yet. Type it in instead."
+        manual = true
+      }
+    } catch (err) {
+      if (err.message !== 'cancelled') connectNote = err.message
+      pairing = null
+    }
+  }
+  function stopPairing() {
+    if (pairingStop) pairingStop.abort()
+    pairing = null
   }
 
   // ── The microphone ──
@@ -209,8 +260,20 @@
 
       {:else if step === 'connect'}
         <h1>Is there already a Frog Hub in the house?</h1>
-        {#if !manual}
+        {#if pairing}
+          <div class="pairing">
+            <div class="qr">{@html pairing.svg}</div>
+            <p class="lead">A grown-up scans this with their phone and types the PIN there.</p>
+            <p class="note">Or on the admin page, under Displays → Pair: <b class="code">{pairing.code}</b></p>
+            <button class="link" onclick={stopPairing}>Cancel</button>
+          </div>
+        {:else if !manual}
           <div class="cards">
+            <button class="card" onclick={startPairing} disabled={checking}>
+              <span class="emoji">📱</span>
+              <b>Yes! Scan with a phone</b>
+              <small>A grown-up scans a code with their phone, so nobody types on me</small>
+            </button>
             <button class="card" onclick={() => ((pinFor = 'copy'), (showPin = true))} disabled={checking}>
               <span class="emoji">🐸🐸</span>
               <b>Yes! Copy everything</b>
@@ -223,6 +286,11 @@
             </button>
           </div>
         {:else}
+          {#if draft.haUrl && !draft.token}
+            <button class="primary" onclick={logIn} disabled={checking}>🏠 Log in with Home Assistant</button>
+            <p class="note">Log in as the person (or the Frog Hub user) whose rooms and devices this display should use.
+              Or use a long-lived access token:</p>
+          {/if}
           <div class="form">
             <label>Home Assistant address <input bind:value={draft.haUrl} autocapitalize="off" autocomplete="off" /></label>
             <label>
@@ -234,7 +302,7 @@
             {connected ? '✓ Connected!' : checking ? 'Checking…' : 'Connect'}
           </button>
         {/if}
-        {#if !checking && !connected}
+        {#if !checking && !connected && !pairing}
           <button class="link" onclick={skipHa}>Skip: use it without Home Assistant</button>
         {/if}
         {#if checking && !manual}<p class="note">Connecting…</p>{/if}
@@ -417,12 +485,32 @@
     display: flex;
     gap: 20px;
   }
+  .pairing {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .qr {
+    width: 240px;
+    height: 240px;
+    padding: 8px;
+    border-radius: 16px;
+    background: #fff;
+  }
+  .qr :global(svg) {
+    width: 100%;
+    height: 100%;
+  }
+  .code {
+    font-family: monospace;
+    letter-spacing: 2px;
+  }
   .card {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 8px;
-    width: 300px;
+    width: 240px;
     padding: 22px;
     border: 3px solid var(--accent);
     border-radius: 24px;

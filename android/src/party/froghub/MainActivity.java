@@ -117,7 +117,10 @@ public class MainActivity extends Activity {
             @Override
             @SuppressWarnings("deprecation")
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                return !isFrogHub(Uri.parse(url)); // stay on Frog Hub: links elsewhere do nothing
+                Uri uri = Uri.parse(url);
+                // Stay on Frog Hub (links elsewhere do nothing), apart from Home Assistant's login page for
+                // "Log in with Home Assistant", which sends it straight back
+                return !isFrogHub(uri) && !"/auth/authorize".equals(uri.getPath());
             }
 
             @Override

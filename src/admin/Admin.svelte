@@ -9,6 +9,7 @@
   import Assistant from './Assistant.svelte'
   import Memory from './Memory.svelte'
   import Voices from './Voices.svelte'
+  import Pair from './Pair.svelte'
 
   const TABS = [
     ['displays', '📺', 'Displays', Displays],
@@ -18,7 +19,9 @@
     ['memory', '🧠', 'Memory', Memory],
     ['voices', '🎙️', 'Voices', Voices],
   ]
-  let tab = $state(TABS.some((t) => t[0] === location.hash.slice(1)) ? location.hash.slice(1) : 'displays')
+  // A display's pairing QR code opens #pair=<code>: show it on the Displays tab
+  const pairCode = (location.hash.match(/^#pair=([A-Za-z0-9]{8})$/) || [])[1] || ''
+  let tab = $state(pairCode ? 'displays' : TABS.some((t) => t[0] === location.hash.slice(1)) ? location.hash.slice(1) : 'displays')
   $effect(() => history.replaceState(null, '', `#${tab}`))
   let Current = $derived(TABS.find((t) => t[0] === tab)[3])
 </script>
@@ -39,6 +42,7 @@
     {/each}
   </nav>
   <main>
+    {#if tab === 'displays'}<Pair code={pairCode.toUpperCase()} />{/if}
     {#key tab}<Current />{/key}
   </main>
 {/if}
