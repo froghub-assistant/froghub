@@ -258,7 +258,11 @@ if (new RegExp(`^${host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[,{]`, 'm').t
 // ---- 5. voice ----
 
 heading('Voice (wake word, speech-to-text and the voices, all on this computer)')
-const compose = has('docker') ? ['docker', 'compose'] : has('podman-compose') ? ['podman-compose'] : null
+const works = (cmd: string) => spawnSync('sh', ['-c', `${cmd} >/dev/null 2>&1`]).status === 0
+// Just after install.sh, the docker group isn't active until you log in again, so fall back to sudo
+const sudoDocker = has('docker') && !works('docker info') ? ['sudo', '-E'] : []
+const compose = works('docker compose version') ? [...sudoDocker, 'docker', 'compose']
+  : has('docker-compose') ? [...sudoDocker, 'docker-compose'] : has('podman-compose') ? ['podman-compose'] : null
 if (!haUrl || haUrl === 'none') say('Skipped: voice needs Home Assistant.')
 else if (!compose) say('Skipped: needs Docker (or podman-compose). Afterwards: docker compose -f setup/voice/compose.yaml up -d')
 else if (yes('Start the voice containers and set them up in Home Assistant', true)) {

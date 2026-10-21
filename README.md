@@ -10,9 +10,11 @@ HTTPS (browsers only allow the microphone over HTTPS; Caddy gets certificates fo
 and Docker for the voice. Then:
 
 ```sh
-git clone <this repo> froghub && cd froghub
-bun run setup
+curl -fsSL https://raw.githubusercontent.com/froghub-assistant/froghub/master/install.sh | sh
 ```
+
+`install.sh` installs git, Bun, Caddy, tmux and rsync (and, if you say yes, Docker and Claude Code), fetches Frog Hub
+to `~/froghub`, then runs `bun run setup`. Already have it? `bun run setup` in the repo does the same questions.
 
 It asks for the site's address, Home Assistant's, the time zone, the children's names, a town for the weather, the
 admin PIN and which brain to use, then:
