@@ -101,7 +101,7 @@ say('🐸 Frog Hub setup. Press Enter to keep the value in [brackets].' + (DRY ?
 
 heading('This house')
 const site = ask('Web address the displays will open (HTTPS, for the microphone)', old.site || 'https://hub.example.com').replace(/\/+$/, '')
-const haUrl = ask('Home Assistant address ("none" to go without)', old.haUrl || 'http://homeassistant.local:8123').replace(/\/+$/, '')
+const haUrl = ask('Home Assistant address ("none" to go without)', old.haUrl || (old.site ? 'none' : 'http://homeassistant.local:8123')).replace(/\/+$/, '')
 const timeZone = ask('Time zone', old.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/London')
 const kids = ask("Children's names, separated by commas", (old.kids || []).join(', '))
   .split(',').map(s => s.trim()).filter(Boolean)
