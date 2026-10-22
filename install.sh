@@ -151,7 +151,9 @@ if ! command -v docker >/dev/null && ! command -v podman-compose >/dev/null &&
 		[ "${had_no_docker_group:-}" = yes ] && note "groupadd docker"
 		[ "$dry" = yes ] || echo "(Docker works without sudo after you log out and in again; setup uses sudo until then if needed.)"
 	else
-		add_packages podman podman-compose # Red Hat's own; no daemon, no docker group
+		# Red Hat's own; no daemon, no docker group. iptables-nft by name, or EPEL's iptables-legacy can win, which
+		# rootless podman can't use
+		add_packages podman podman-compose iptables-nft
 	fi
 fi
 

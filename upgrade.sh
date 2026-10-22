@@ -7,6 +7,15 @@
 # the voice containers (--no-voice leaves them alone). --force does it all even when there's no new code.
 set -eu
 
+# The voice services setup installed on other computers over SSH, one "target bind service" line each
+remote_voice() {
+	[ -f "$HOME/.config/froghub/instance.json" ] && command -v bun >/dev/null || return 0
+	bun -e 'const i = await Bun.file(process.argv.at(-1)).json()
+for (const [k, v] of Object.entries(i.voiceSsh || {})) console.log(v.ssh, v.bind, k)' "$HOME/.config/froghub/instance.json"
+}
+# ssh with a terminal when there is one (for sudo's password there)
+ssh_tty() { if (: </dev/tty) 2>/dev/null; then ssh -t "$@" </dev/tty; else ssh "$@" </dev/null; fi; }
+
 say() { printf '\n\033[1;32m%s\033[0m\n' "$*"; }
 fail() { printf '%s\n' "$*" >&2; exit 1; }
 
@@ -90,6 +99,13 @@ if [ "$voice" = yes ]; then
 		$sudo env VOICE_BIND="${bind:-127.0.0.1}" $compose -f setup/voice/compose.yaml pull $services
 		$sudo env VOICE_BIND="${bind:-127.0.0.1}" $compose -f setup/voice/compose.yaml up -d $services
 	fi
+	remote_voice | while read -r target bind service; do
+		say "Updating $service on $target"
+		copied=yes
+		# shellcheck disable=SC2029 # $f is meant to expand here
+		for f in compose.yaml voice.sh; do ssh "$target" "mkdir -p froghub-voice && cat > froghub-voice/$f" <"setup/voice/$f" || copied=no; done
+		[ "$copied" = yes ] && ssh_tty "$target" sh froghub-voice/voice.sh up "$bind" "$service" || echo "(Couldn't update $service on $target.)"
+	done
 fi
 
 say "Done 🐸"

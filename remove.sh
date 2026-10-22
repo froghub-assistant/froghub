@@ -10,6 +10,15 @@
 # depend on since are left alone.
 set -eu
 
+# The voice services setup installed on other computers over SSH, one "target bind service" line each
+remote_voice() {
+	[ -f "$HOME/.config/froghub/instance.json" ] && command -v bun >/dev/null || return 0
+	bun -e 'const i = await Bun.file(process.argv.at(-1)).json()
+for (const [k, v] of Object.entries(i.voiceSsh || {})) console.log(v.ssh, v.bind, k)' "$HOME/.config/froghub/instance.json"
+}
+# ssh with a terminal when there is one (for sudo's password there)
+ssh_tty() { if (: </dev/tty) 2>/dev/null; then ssh -t "$@" </dev/tty; else ssh "$@" </dev/null; fi; }
+
 say() { printf '\n\033[1;32m%s\033[0m\n' "$*"; }
 fail() { printf '%s\n' "$*" >&2; exit 1; }
 
@@ -106,6 +115,11 @@ if [ -n "$compose" ] && { $sudo $engine container inspect froghub-openwakeword |
 	fi
 	delete "$DIR/setup/voice/data"
 fi
+remote_voice | while read -r target _ service; do
+	if ask "Remove $service from $target too (over SSH)?" Y; then
+		ssh_tty "$target" sh froghub-voice/voice.sh down "$service" || echo "(Couldn't reach $target; on it: sh ~/froghub-voice/voice.sh down $service)"
+	fi
+done
 
 # ---- the web app ----
 if safe "$webRoot" && [ -f "$webRoot/index.html" ] && ask "Delete the web app in $webRoot?" Y; then

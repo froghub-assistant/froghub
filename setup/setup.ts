@@ -13,7 +13,7 @@
  */
 import { spawnSync } from 'child_process'
 import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
-import { homedir } from 'os'
+import { homedir, tmpdir } from 'os'
 import { dirname, join, resolve } from 'path'
 
 const DRY = process.argv.includes('--dry-run')
@@ -77,6 +77,9 @@ function run(cmd: string[], options: { cwd?: string; allowFail?: boolean } = {})
 
 const has = (command: string) => spawnSync('sh', ['-c', `command -v ${command}`]).status === 0
 const works = (cmd: string) => spawnSync('sh', ['-c', `${cmd} >/dev/null 2>&1`]).status === 0
+
+// One connection per computer for all of setup (the voice on other computers), so a password is asked once
+const SSH_OPTS = ['-o', 'ControlMaster=auto', '-o', `ControlPath=${join(tmpdir(), 'froghub-ssh-%C')}`, '-o', 'ControlPersist=60']
 
 // What setup adds that wasn't there before (folders, the Caddyfile backup), for remove.sh. install.sh keeps the same list.
 const MANIFEST = join(process.env.XDG_DATA_HOME || join(homedir(), '.local', 'share'), 'froghub', 'installed')
@@ -326,18 +329,48 @@ else if (yes('Set up the voice and add it to Home Assistant', true)) {
   // One that's moved elsewhere doesn't need its container here any more
   for (const v of elsewhere)
     if (engine && works(`${engine.join(' ')} container inspect froghub-${v.key}`)) run([...engine, 'rm', '-f', `froghub-${v.key}`], { allowFail: true })
-  if (elsewhere.length)
-    say(`To run ${listNames(elsewhere.map(v => v.name))} on another computer with Frog Hub's settings, from a copy of this repo there:\n` +
-      `  VOICE_BIND=0.0.0.0 docker compose -f setup/voice/compose.yaml up -d ${elsewhere.map(v => v.key).join(' ')}`)
+
+  // Ones elsewhere can be installed there over SSH (setup/voice/voice.sh, copied to ~/froghub-voice there)
+  const oldSsh: Record<string, { ssh: string; bind: string }> = old.voiceSsh || {}
+  const ssh: Record<string, { ssh: string; bind: string }> = {}
+  for (const v of elsewhere) {
+    if (!has('ssh')) break
+    const host = hostOf(where[v.key])
+    if (!yes(`Install ${v.name} on ${host} over SSH`, oldSsh[v.key] !== undefined)) continue
+    const target = ask('SSH to (user@host)', oldSsh[v.key]?.ssh || host)
+    const listen = ask(`Address on ${host} for it to listen on (0.0.0.0 for all)`, oldSsh[v.key]?.bind || (/^[\d.]+$/.test(host) ? host : '0.0.0.0'))
+    ssh[v.key] = { ssh: target, bind: listen }
+  }
+  // Ones installed over SSH before that are now somewhere else
+  for (const [key, was] of Object.entries(oldSsh))
+    if (ssh[key]?.ssh !== was.ssh) {
+      say(`Removing ${key} from ${was.ssh}`)
+      sshRun(was.ssh, ['down', key])
+    }
+  for (const target of new Set(Object.values(ssh).map(t => t.ssh))) {
+    const keys = Object.keys(ssh).filter(k => ssh[k].ssh === target)
+    if (!sshCopy(target)) { say(`Couldn't copy the voice files to ${target}; check you can ssh ${target}, then run setup again.`); started = false; continue }
+    const hasEngine = DRY || spawnSync('ssh', [...SSH_OPTS, target, 'command -v docker || command -v podman-compose'], { stdio: 'ignore' }).status === 0
+    if (!hasEngine) {
+      if (!yes(`${target} has no Docker or podman-compose: install it there (with sudo)`, true)) { started = false; continue }
+      if (!sshRun(target, ['engine'])) { started = false; continue }
+    }
+    for (const bindThere of new Set(keys.map(k => ssh[k].bind)))
+      if (!sshRun(target, ['up', bindThere, ...keys.filter(k => ssh[k].bind === bindThere)])) started = false
+  }
+  const byHand = elsewhere.filter(v => !ssh[v.key])
+  if (byHand.length)
+    say(`To run ${listNames(byHand.map(v => v.name))} on another computer with Frog Hub's settings, from a copy of this repo there:\n` +
+      `  VOICE_BIND=0.0.0.0 docker compose -f setup/voice/compose.yaml up -d ${byHand.map(v => v.key).join(' ')}`)
+  if (!started) say('Not everything started; fix that and run setup again.')
   if (!DRY) {
     const instanceFile = join(CONFIG, 'instance.json')
-    writeFileSync(instanceFile, JSON.stringify({ ...readJson(instanceFile), voice: where, voiceBind: bind }, null, 1) + '\n')
+    writeFileSync(instanceFile, JSON.stringify({ ...readJson(instanceFile), voice: where, voiceBind: bind, voiceSsh: ssh }, null, 1) + '\n')
   }
   if (started) {
     const endpoints = VOICE.map(v => {
       const at = where[v.key] === 'here' ? `${bind}:${v.port}` : where[v.key]
-      const colon = at.lastIndexOf(':')
-      return { ...v, host: at.slice(0, colon).replace(/^\[|\]$/g, ''), port: Number(at.slice(colon + 1)) }
+      return { ...v, host: hostOf(at), port: Number(at.slice(at.lastIndexOf(':') + 1)) }
     })
     if (DRY) {
       say(`\x1b[2m(would ask for a Home Assistant token, then add ${listNames(endpoints.map(e => `${e.name} at ${e.host}:${e.port}`))}` +
@@ -355,6 +388,26 @@ say(`Open ${site} on each tablet (Fully Kiosk Browser works well) and follow the
 say(`Grown-ups' page: ${site}/admin`)
 if (brain === 'claude-code') say(`Watch the assistant: tmux -L froghub attach -t froghub (Ctrl-b d to leave)`)
 say('After changing the code: ./deploy.sh')
+
+// ---- the voice on other computers, over SSH ----
+
+/** "host:port" → "host" (and "[::1]:10300" → "::1") */
+function hostOf(at: string): string {
+  return at.slice(0, at.lastIndexOf(':')).replace(/^\[|\]$/g, '')
+}
+
+/** Copies compose.yaml and voice.sh to ~/froghub-voice on the target. */
+function sshCopy(target: string): boolean {
+  say(`\x1b[2m$ ssh ${target} (copy setup/voice/compose.yaml and voice.sh to ~/froghub-voice)\x1b[0m`)
+  if (DRY) return true
+  return ['compose.yaml', 'voice.sh'].every(file => spawnSync('ssh', [...SSH_OPTS, target,
+    `mkdir -p froghub-voice && cat > froghub-voice/${file}`], { input: readFileSync(join(SETUP, 'voice', file)), stdio: ['pipe', 'inherit', 'inherit'] }).status === 0)
+}
+
+/** sh ~/froghub-voice/voice.sh <args> on the target, with a terminal for sudo's password. */
+function sshRun(target: string, args: string[]): boolean {
+  return run(['ssh', ...SSH_OPTS, '-t', target, 'sh', 'froghub-voice/voice.sh', ...args], { allowFail: true })
+}
 
 // ---- Home Assistant: Wyoming services and the personalities' pipelines ----
 

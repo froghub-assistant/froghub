@@ -32,8 +32,10 @@ admin PIN and which brain to use, then:
 - adds a site block to `/etc/caddy/Caddyfile` (asks first, keeps a `.bak-froghub`) or prints it for you;
 - starts the voice containers (`setup/voice/compose.yaml`: openWakeWord, Whisper, Piper) and, with a Home
   Assistant token it doesn't keep, adds them to HA and creates the four `Frog Hub · <Personality>` pipelines. Any of
-  the three can be on another computer instead (Whisper on a faster PC, say): answer with its `host:port`, and run it
-  there with `VOICE_BIND=0.0.0.0 docker compose -f setup/voice/compose.yaml up -d whisper` from a copy of this repo.
+  the three can be on another computer instead (Whisper on a faster PC, say): answer with its `host:port`, and setup
+  offers to install it there over SSH (Docker or Podman too, if it has neither; files in `~/froghub-voice` there).
+  `upgrade.sh` and `remove.sh` reach it the same way. Or run it there yourself, from a copy of this repo:
+  `VOICE_BIND=0.0.0.0 docker compose -f setup/voice/compose.yaml up -d whisper`.
 
 Run it again to change anything; each answer defaults to what's set now (`bun run setup --dry-run` asks the same questions and shows what it would do, changing nothing). The
 assistant's rules (`CLAUDE.md` / `assistant.md`) are only replaced if you say so, since they're yours to tweak.
