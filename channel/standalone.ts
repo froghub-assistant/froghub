@@ -180,9 +180,10 @@ async function handleAsk(req: Request): Promise<Response> {
   const admin = adminValid(req.headers.get('x-admin-token'))
 
   const id = clean(body.conversation_id, 60) || 'default'
+  // (forget the stale ones first: a new conversation's `at` is 0 until it's answered)
+  for (const [key, c] of conversations) if (Date.now() - c.at > 10 * 60_000) conversations.delete(key)
   const convo = conversations.get(id) ?? { turns: [], at: 0 }
   conversations.set(id, convo)
-  for (const [key, c] of conversations) if (Date.now() - c.at > 10 * 60_000) conversations.delete(key)
 
   const user = devices.length ? `${text}\n\n[Room devices: ${devices.join('; ')}]` : text
   const messages = [...convo.turns, { role: 'user' as const, content: user }]
