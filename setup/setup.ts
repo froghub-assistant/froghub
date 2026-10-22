@@ -12,7 +12,7 @@
  * Run it again any time; every question defaults to what's set now. `--dry-run` shows what it would do.
  */
 import { spawnSync } from 'child_process'
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { homedir } from 'os'
 import { dirname, join, resolve } from 'path'
 
@@ -78,9 +78,27 @@ function run(cmd: string[], options: { cwd?: string; allowFail?: boolean } = {})
 const has = (command: string) => spawnSync('sh', ['-c', `command -v ${command}`]).status === 0
 const works = (cmd: string) => spawnSync('sh', ['-c', `${cmd} >/dev/null 2>&1`]).status === 0
 
+// What setup adds that wasn't there before (folders, the Caddyfile backup), for remove.sh. install.sh keeps the same list.
+const MANIFEST = join(process.env.XDG_DATA_HOME || join(homedir(), '.local', 'share'), 'froghub', 'installed')
+
+function note(line: string): void {
+  if (DRY || (existsSync(MANIFEST) && readFileSync(MANIFEST, 'utf8').split('\n').includes(line))) return
+  mkdirSync(dirname(MANIFEST), { recursive: true })
+  appendFileSync(MANIFEST, line + '\n')
+}
+
+/** The folders `mkdir -p dir` would make, outermost first. */
+function missingDirs(dir: string): string[] {
+  const out: string[] = []
+  for (let d = resolve(dir); !existsSync(d); d = dirname(d)) out.unshift(d)
+  return out
+}
+
 function write(path: string, text: string, mode?: number): void {
   if (DRY) return say(`\x1b[2m(would write ${path})\x1b[0m`)
+  const made = missingDirs(dirname(path))
   mkdirSync(dirname(path), { recursive: true })
+  for (const d of made) note(`dir ${d}`)
   writeFileSync(path, text)
   if (mode) chmodSync(path, mode)
   say(`Wrote ${path}`)
@@ -216,7 +234,9 @@ if (!DRY) {
 run(['bun', 'install', '--no-summary'], { cwd: REPO })
 run(['bun', 'run', 'build'], { cwd: REPO })
 const sudo = existsSync(webRoot) && spawnSync('test', ['-w', webRoot]).status === 0 ? [] : ['sudo']
+const madeWebDirs = missingDirs(webRoot)
 run([...sudo, 'mkdir', '-p', webRoot])
+for (const d of madeWebDirs) note(`dir ${d}`)
 run([...sudo, 'rsync', '-a', '--delete', `${join(REPO, 'dist')}/`, `${webRoot}/`])
 // SELinux (Fedora, RHEL, Rocky, Alma…): the web server may only read files labelled as web content, and a new
 // /var/www made by mkdir isn't. New files inherit the folder's label, so ./deploy.sh keeps working after this.
@@ -252,6 +272,7 @@ if (new RegExp(`^${host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[,{]`, 'm').t
   say(`${caddyfile} already has a block for ${host}; leaving it alone.`)
 } else if (existsSync(caddyfile) && yes(`Add this to ${caddyfile} (with sudo) and reload Caddy?\n\n${block}\n`, true)) {
   run(['sudo', 'cp', caddyfile, `${caddyfile}.bak-froghub`])
+  note(`file ${caddyfile}.bak-froghub`)
   say(`\x1b[2m$ sudo tee -a ${caddyfile}\x1b[0m`)
   if (!DRY) spawnSync('sudo', ['tee', '-a', caddyfile], { input: '\n' + block, stdio: ['pipe', 'ignore', 'inherit'] })
   if (!run(['sudo', 'caddy', 'validate', '--config', caddyfile, '--adapter', 'caddyfile'], { allowFail: true })) {
