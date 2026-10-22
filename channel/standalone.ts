@@ -10,6 +10,7 @@
  * Environment (put secrets in an EnvironmentFile, not the unit):
  *   ANTHROPIC_API_KEY       Anthropic API key (optional)
  *   FROGHUB_MODEL           Claude model (default claude-haiku-5-5)
+ *   FROGHUB_BIG_MODEL       the bigger one it hands hard questions to (default claude-sonnet-5-5; "none" turns it off)
  *   FROGHUB_FALLBACK_URL    OpenAI-compatible base URL, e.g. http://192.168.1.20:1234/v1 (optional)
  *   FROGHUB_FALLBACK_MODEL  model name there
  *   FROGHUB_PROMPT          the assistant's instructions (default ~/.config/froghub/assistant.md)
@@ -21,10 +22,12 @@ import { homedir } from 'os'
 import { join } from 'path'
 import { PERSONALITIES, SERVICES, type Reply, adminValid, clean, cleanActions, deviceLines, handleAdminCheck, handleLock, handleUnlock, json, log, londonTime } from './common.ts'
 import { handleInstance } from './instance.ts'
+import { THINK_DESCRIPTION, bigModel } from './thinker.ts'
 
 const PORT = Number(process.env.FROGHUB_PORT || 8790)
 const API_KEY = process.env.ANTHROPIC_API_KEY || ''
 const MODEL = process.env.FROGHUB_MODEL || 'claude-haiku-5-5'
+const BIG_MODEL = bigModel('claude-sonnet-5-5')
 const FALLBACK_URL = (process.env.FROGHUB_FALLBACK_URL || '').replace(/\/+$/, '')
 const FALLBACK_MODEL = process.env.FROGHUB_FALLBACK_MODEL || ''
 const PROMPT_FILE = process.env.FROGHUB_PROMPT || join(homedir(), '.config', 'froghub', 'assistant.md')
@@ -63,6 +66,13 @@ const REPLY_TOOL = {
   },
 }
 
+// Asking for it hands the whole request to BIG_MODEL, which then replies itself
+const THINK_TOOL = {
+  name: 'think_harder',
+  description: THINK_DESCRIPTION,
+  input_schema: { type: 'object', properties: { why: { type: 'string', description: 'What needs the extra thought' } } },
+}
+
 const REMEMBER_TOOL = {
   name: 'remember',
   description: 'Save a short note to your long-term memory (things people ask you to remember, preferences).',
@@ -86,18 +96,19 @@ function remember(note: string): void {
   if (line) appendFileSync(MEMORY_FILE, `- ${line}\n`)
 }
 
-async function askClaude(system: string, messages: Turn[]): Promise<Reply> {
+async function askClaude(system: string, messages: Turn[], model = MODEL): Promise<Reply> {
   const convo: unknown[] = messages.map(m => ({ role: m.role, content: m.content }))
+  const canThink = Boolean(BIG_MODEL) && model !== BIG_MODEL
   for (let round = 0; round < 3; round++) {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
-        model: MODEL,
+        model,
         max_tokens: 500,
         system,
         messages: convo,
-        tools: [REPLY_TOOL, REMEMBER_TOOL, { type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
+        tools: [REPLY_TOOL, REMEMBER_TOOL, ...(canThink ? [THINK_TOOL] : []), { type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
         tool_choice: { type: 'any' },
       }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -106,6 +117,10 @@ async function askClaude(system: string, messages: Turn[]): Promise<Reply> {
     const content = (await r.json()).content as { type: string; id?: string; name?: string; input?: Record<string, unknown> }[]
     const uses = content.filter(b => b.type === 'tool_use')
     for (const u of uses) if (u.name === 'remember') remember(String(u.input?.note ?? ''))
+    if (canThink && uses.some(u => u.name === 'think_harder')) {
+      log(`thinking harder with ${BIG_MODEL}: ${clean(uses.find(u => u.name === 'think_harder')?.input?.why, 200)}`)
+      return askClaude(system, messages, BIG_MODEL)
+    }
     const reply = uses.find(u => u.name === 'reply')
     if (reply) {
       const i = reply.input ?? {}

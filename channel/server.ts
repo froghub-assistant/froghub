@@ -10,14 +10,23 @@
  * returns a token; requests carrying it in X-Admin-Token are marked mode="admin". Tokens expire after 10 idle
  * minutes, and 5 wrong PINs lock unlocking for 5 minutes.
  *
+ * Besides answering, the assistant can think harder (thinker.ts), announce on the displays unprompted, and schedule
+ * jobs for later (schedule.ts). After FROGHUB_CLEAR_AFTER quiet minutes it gets a fresh conversation (/clear typed
+ * into its tmux), so old chat doesn't pile up; its memory files stay.
+ *
  * Environment:
- *   FROGHUB_PORT     listen port on 127.0.0.1 (default 8790)
- *   FROGHUB_TIMEOUT  seconds to wait for a reply (default 45)
+ *   FROGHUB_PORT         listen port on 127.0.0.1 (default 8790)
+ *   FROGHUB_TIMEOUT      seconds to wait for a reply (default 45)
+ *   FROGHUB_CLEAR_AFTER  quiet minutes before a fresh conversation (default 30; 0 never)
+ *   FROGHUB_BIG_MODEL    the model think_harder asks (default sonnet; "none" turns it off)
  */
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js'
+import { spawnSync } from 'child_process'
 import { randomBytes } from 'crypto'
+import { THINK_DESCRIPTION, bigModel, thinkHarder } from './thinker.ts'
+import { type Job, runScheduleTool, scheduleTools, startSchedule } from './schedule.ts'
 import { weatherTool, getWeather } from './weather.ts'
 import { alarmTools, runAlarmTool, handleAlarms } from './alarms.ts'
 import { handleStore, isGrownUps, policy, sharedSettings } from './store.ts'
@@ -32,6 +41,7 @@ import { PERSONALITIES, SERVICES, type Reply, adminValid, clean, cleanActions, d
 
 const PORT = Number(process.env.FROGHUB_PORT || 8790)
 const TIMEOUT_MS = Number(process.env.FROGHUB_TIMEOUT || 45) * 1000
+const CLEAR_AFTER_MS = Number(process.env.FROGHUB_CLEAR_AFTER ?? 30) * 60_000
 
 const pending = new Map<string, (reply: Reply) => void>()
 const displays = new Map<string, Display>() // what show_on_screen put up for a request, sent along with its reply
@@ -53,9 +63,12 @@ const mcp = new Server(
         'Speak as the personality named in the tag (see CLAUDE.md). Set continue_conversation when you ask a question, so the display keeps listening.',
       'A tag with kind="announcement" is not someone talking to the display: a grown-up at home wants you to tell the room something unprompted. ' +
         'Its text says what; your reply is spoken out of the blue, so make it make sense on its own. Never set continue_conversation for one.',
+      'A tag with kind="scheduled" is a job you scheduled earlier coming due: its text is the prompt you saved. Answer it like an announcement.',
     ].join('\n'),
   },
 )
+
+const { request_id: _, ...cardFields } = displayTool.inputSchema.properties
 
 mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
@@ -92,6 +105,33 @@ mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
     weatherTool,
     ...alarmTools,
     displayTool,
+    ...(bigModel('sonnet') ? [{
+      name: 'think_harder',
+      description: `${THINK_DESCRIPTION} Put the answer it gives in your own words in your reply. If it fails, answer yourself.`,
+      inputSchema: {
+        type: 'object',
+        properties: { question: { type: 'string', description: 'The question, with whatever it needs to know from the conversation (it sees nothing else)' } },
+        required: ['question'],
+      },
+    }] : []),
+    {
+      name: 'announce',
+      description:
+        'Say and show something on the displays now, without anyone having asked there (e.g. while answering a ' +
+        'scheduled job, or "tell everyone tea is ready" from the admin page). For passing on a message from the ' +
+        'display you were asked at, use send_message instead.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', description: 'What they will hear, making sense on its own' },
+          show: { type: 'object', properties: cardFields, description: 'A card to show with it (as show_on_screen)' },
+          to: { type: 'string', description: "One display's name; leave out for all of them" },
+          at_night: { type: 'boolean', description: 'Speak it during night hours too (otherwise it is only shown then)' },
+        },
+        required: ['text'],
+      },
+    },
+    ...scheduleTools,
     {
       name: 'send_message',
       description:
@@ -147,6 +187,36 @@ mcp.setRequestHandler(CallToolRequestSchema, async req => {
     }
     message(text, from, to)
     return { content: [{ type: 'text', text: `Sent to ${to ? to.name : others.map(s => s.name).join(', ')}.` }] }
+  }
+  if (req.params.name === 'think_harder') {
+    try {
+      return { content: [{ type: 'text', text: await thinkHarder(clean((req.params.arguments ?? {}).question, 4000)) }] }
+    } catch (err) {
+      return { isError: true, content: [{ type: 'text', text: (err as Error).message }] }
+    }
+  }
+  if (req.params.name === 'announce') {
+    if (!policy().announce) return off('announcements')
+    const a = (req.params.arguments ?? {}) as Record<string, unknown>
+    const text = clean(a.text, 500)
+    if (!text) return { isError: true, content: [{ type: 'text', text: 'Nothing to say.' }] }
+    const to = a.to ? findDisplay(String(a.to)) : undefined
+    if (a.to && !to) return { isError: true, content: [{ type: 'text', text: `No display called "${a.to}" is on. Displays that are on: ${onlineDisplays().map(s => s.name).join(', ') || 'none'}.` }] }
+    try {
+      const display = a.show && typeof a.show === 'object' ? await cleanDisplay({ ...(a.show as Record<string, unknown>) }) : undefined
+      announce({ text, display, to: to?.id, at_night: a.at_night === true })
+      return { content: [{ type: 'text', text: `Announced on ${to ? to.name : 'every display that is on'}.` }] }
+    } catch (err) {
+      return { isError: true, content: [{ type: 'text', text: (err as Error).message }] }
+    }
+  }
+  if (scheduleTools.some(t => t.name === req.params.name)) {
+    if (!policy().announce) return off('announcements')
+    try {
+      return { content: [{ type: 'text', text: runScheduleTool(req.params.name, req.params.arguments ?? {}) }] }
+    } catch (err) {
+      return { isError: true, content: [{ type: 'text', text: (err as Error).message }] }
+    }
   }
   if (alarmTools.some(t => t.name === req.params.name)) {
     if (!policy().alarms) return off('alarms and timers')
@@ -219,6 +289,7 @@ async function handleAsk(req: Request): Promise<Response> {
 /** Hands text to the assistant as a channel event and waits for its reply tool call (null if it times out). */
 async function askAssistant(content: string, meta: Record<string, string>, from?: Screen): Promise<Reply | null> {
   const request_id = randomBytes(4).toString('hex')
+  lastActivity = Date.now()
   if (from) askedFrom.set(request_id, from)
   const reply = new Promise<Reply | null>(resolve => {
     const timer = setTimeout(() => {
@@ -229,6 +300,7 @@ async function askAssistant(content: string, meta: Record<string, string>, from?
     }, TIMEOUT_MS)
     pending.set(request_id, r => {
       clearTimeout(timer)
+      lastActivity = Date.now()
       pending.delete(request_id)
       askedFrom.delete(request_id)
       resolve(r)
@@ -276,17 +348,42 @@ async function handleAnnounce(req: Request): Promise<Response> {
     return json({ ok: true, id: announce({ text: say, display, area, to, at_night }) })
   }
   if (!prompt) return json({ error: 'give "say" (the exact words) or "prompt" (what the assistant should tell the room)' }, 400)
-  const shared = sharedSettings()
-  const wanted = String(body.personality ?? shared.personality)
-  const answer = await askAssistant(prompt, {
-    kind: 'announcement',
-    personality: PERSONALITIES.has(wanted) ? wanted : 'frog',
-    speaker: 'a grown-up at home',
-    time: londonTime(),
-  })
-  if (!answer?.text) return json({ error: 'the assistant did not answer in time' }, 504)
-  const id = announce({ text: answer.text, display: answer.display as Display | undefined, actions: answer.actions, area, to, at_night })
-  return json({ ok: true, id, text: answer.text })
+  const answer = await announceFromPrompt(prompt, 'announcement', 'a grown-up at home', { personality: body.personality, area, to, at_night })
+  if (!answer) return json({ error: 'the assistant did not answer in time' }, 504)
+  return json({ ok: true, ...answer })
+}
+
+/** Asks the assistant `prompt` as an announcement (or a scheduled job) and announces its reply. */
+async function announceFromPrompt(prompt: string, kind: string, speaker: string,
+  o: { personality?: unknown; area?: string; to?: string; at_night: boolean }): Promise<{ id: number; text: string } | null> {
+  const wanted = String(o.personality ?? sharedSettings().personality)
+  const answer = await askAssistant(prompt, { kind, personality: PERSONALITIES.has(wanted) ? wanted : 'frog', speaker, time: londonTime() })
+  if (!answer?.text) return null
+  const id = announce({ text: answer.text, display: answer.display as Display | undefined, actions: answer.actions, area: o.area, to: o.to, at_night: o.at_night })
+  return { id, text: answer.text }
+}
+
+// Scheduled jobs (schedule.ts): exact words are announced as they are, prompts go to the assistant first
+startSchedule(async (job: Job) => {
+  if (!policy().announce) return log(`schedule: announcements are off, skipped "${job.label}"`)
+  const to = job.to ? findDisplay(job.to) : undefined
+  if (job.to && !to) return log(`schedule: "${job.label}" is for ${job.to}, which isn't on`)
+  if (job.say) announce({ text: job.say, display: { emoji: '🗓️', title: job.label, text: job.say, seconds: 60 }, to: to?.id, at_night: job.at_night })
+  else if (job.prompt && !(await announceFromPrompt(job.prompt, 'scheduled', 'nobody (a job you scheduled)', { to: to?.id, at_night: job.at_night })))
+    log(`schedule: the assistant didn't answer "${job.label}"`)
+})
+
+// A fresh conversation after a quiet spell: /clear typed into the assistant's tmux (setup/agent/start runs it there),
+// only while no request is open. Its memory files and CLAUDE.md come back with it.
+let lastActivity = Date.now()
+let lastClear = Date.now()
+if (CLEAR_AFTER_MS > 0) {
+  setInterval(() => {
+    if (pending.size || lastClear >= lastActivity || Date.now() - lastActivity < CLEAR_AFTER_MS) return
+    const tmux = (...args: string[]) => spawnSync('tmux', ['-L', 'froghub', ...args]).status === 0
+    if (tmux('send-keys', '-t', 'froghub', '-l', '/clear') && tmux('send-keys', '-t', 'froghub', 'Enter')) log('quiet for a while: cleared the conversation')
+    lastClear = Date.now()
+  }, 60_000)
 }
 
 

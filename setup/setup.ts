@@ -195,7 +195,10 @@ if (brain === 'claude-code') {
   say('An Anthropic API key (console.anthropic.com → API keys). Leave it empty to use only a local model.')
   const key = secret(env.ANTHROPIC_API_KEY ? 'API key (Enter to keep the one set now)' : 'API key')
   if (key) env.ANTHROPIC_API_KEY = key
-  if (env.ANTHROPIC_API_KEY) env.FROGHUB_MODEL = ask('Claude model', env.FROGHUB_MODEL || 'claude-haiku-5-5')
+  if (env.ANTHROPIC_API_KEY) {
+    env.FROGHUB_MODEL = ask('Claude model', env.FROGHUB_MODEL || 'claude-haiku-5-5')
+    env.FROGHUB_BIG_MODEL = ask('Bigger model it may hand hard questions to ("none" for none)', env.FROGHUB_BIG_MODEL || 'claude-sonnet-5-5')
+  }
   const local = ask(`OpenAI-compatible server for ${env.ANTHROPIC_API_KEY ? 'when the API fails' : 'the answers'}, e.g. http://192.168.1.20:1234/v1 ("none" for none)`, env.FROGHUB_FALLBACK_URL || (env.ANTHROPIC_API_KEY ? 'none' : ''))
   if (local && local !== 'none') {
     env.FROGHUB_FALLBACK_URL = local

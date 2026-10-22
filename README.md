@@ -130,6 +130,25 @@ of them, and the assistant has a `send_message` tool ("tell the kitchen I'm hung
 Each display has a random id and a name (Settings → "This display's name", default its room's name), sent with
 every poll, which is also how `GET /api/displays` knows which are on. The sender never shows its own message.
 
+The assistant can speak up by itself as well: its `announce` tool says (and shows) something on one display or all of
+them, and `schedule` sets up jobs for later or regularly ("every school day at 7:45, tell them to get their shoes on"):
+a cron expression, a time or minutes from now, with exact words or a prompt it's given at the time (answered like an
+announcement, so "tell them the weather for the walk" is worked out then). Jobs are kept in
+`~/.config/froghub/schedule.json`, run in the house's time zone and survive restarts; at most 30, and a repeating one
+at most 4 times an hour. `list_schedule` and `cancel_schedule` manage them. Both use the `announce` policy switch.
+
+## Thinking harder, and a fresh start
+
+The assistant is Haiku, which is quick. For what needs real thought (homework, a careful explanation, planning) it can
+call `think_harder`, which hands that one question to a bigger model and puts the answer in its own words. The Claude
+Code brain runs a one-shot, locked-down `claude -p` (no tools, no settings, no saved session; given 25 s); the API
+brain re-asks the bigger model with the whole conversation. `FROGHUB_BIG_MODEL` picks it (default Sonnet; `none` turns
+it off). On a subscription, Sonnet uses up the limits faster than Haiku.
+
+The Claude Code brain's conversation is cleared (`/clear`, typed into its tmux) after 30 quiet minutes with no request
+open (`FROGHUB_CLEAR_AFTER`, in minutes; 0 never), so old chat doesn't pile up; its memory files stay. The API brain
+only ever keeps the last six exchanges of a conversation, which the display starts afresh after 5 quiet minutes.
+
 ## Admin page and app
 
 `<site>/admin` (`admin/index.html`, `src/admin/`), behind the PIN: every Frog Hub that has ever checked

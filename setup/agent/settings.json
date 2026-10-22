@@ -12,7 +12,12 @@
       "mcp__froghub__list_alarms",
       "mcp__froghub__cancel_alarm",
       "mcp__froghub__show_on_screen",
-      "mcp__froghub__send_message"
+      "mcp__froghub__send_message",
+      "mcp__froghub__think_harder",
+      "mcp__froghub__announce",
+      "mcp__froghub__schedule",
+      "mcp__froghub__list_schedule",
+      "mcp__froghub__cancel_schedule"
     ],
     "deny": ["Bash", "WebFetch"]
   }
