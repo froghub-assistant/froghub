@@ -67,6 +67,12 @@ Tablet (Fully Kiosk Browser or android/) ── https://<site> (Caddy on the ser
 | Voice | `setup/voice/compose.yaml` (Docker, Wyoming: wake word 10400, Whisper 10300, Piper 10200) |
 | Caddy site | your site's block in `/etc/caddy/Caddyfile` (see `bun run setup`) |
 
+## Tests
+
+`bun run test` runs the unit tests in `test/` (`channel/` for the server, `web/` for `src/lib`). They get a throwaway
+HOME, so they never touch the real `~/.config/froghub`, and a fake `systemctl`, so they never restart the assistant.
+A plain `bun test` refuses to run for that reason. Extra arguments go to `bun test`, e.g. `bun run test alarms`.
+
 ## Setting up a new display
 
 A display with no Home Assistant token opens the welcome (`src/lib/Onboarding.svelte`): hello, connect (a grown-up's
