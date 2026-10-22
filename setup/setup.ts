@@ -15,6 +15,7 @@ import { spawnSync } from 'child_process'
 import { appendFileSync, chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { homedir, tmpdir } from 'os'
 import { dirname, join, resolve } from 'path'
+import { checkToken, setUpHomeAssistant } from './homeassistant'
 
 const DRY = process.argv.includes('--dry-run')
 const REPO = resolve(dirname(import.meta.path), '..')
@@ -295,7 +296,6 @@ const VOICE = [
   { key: 'whisper', name: 'Whisper', what: 'speech-to-text', port: 10300 },
   { key: 'piper', name: 'Piper', what: 'the voices', port: 10200 },
 ] as const
-type Voice = (typeof VOICE)[number]
 // Just after install.sh, the docker group isn't active until you log in again, so fall back to sudo
 const sudoDocker = has('docker') && !works('docker info') ? ['sudo', '-E'] : []
 const engine = has('docker') ? [...sudoDocker, 'docker'] : has('podman') ? ['podman'] : null
@@ -377,8 +377,14 @@ else if (yes('Set up the voice and add it to Home Assistant', true)) {
         ' and add or update the four "Frog Hub · …" pipelines)\x1b[0m')
     } else {
       say('Now a Home Assistant long-lived access token (HA → your profile → Security → Create token). It is only used now, not saved.')
-      const token = secret('Token (Enter to skip)')
-      if (token) await setUpHomeAssistant(haUrl, token, endpoints)
+      for (;;) {
+        const token = secret('Token (Enter to skip)')
+        if (!token) { say('Skipped: run setup again with a token to add them to Home Assistant.'); break }
+        const problem = await checkToken(haUrl, token)
+        if (problem) { say(`${problem} Try again, or Enter to skip.`); continue }
+        await setUpHomeAssistant(haUrl, token, endpoints, say)
+        break
+      }
     }
   }
 }
@@ -388,6 +394,7 @@ say(`Open ${site} on each tablet (Fully Kiosk Browser works well) and follow the
 say(`Grown-ups' page: ${site}/admin`)
 if (brain === 'claude-code') say(`Watch the assistant: tmux -L froghub attach -t froghub (Ctrl-b d to leave)`)
 say('After changing the code: ./deploy.sh')
+process.exit(0) // (nothing left to wait for, whatever a library or ssh left open)
 
 // ---- the voice on other computers, over SSH ----
 
@@ -407,76 +414,4 @@ function sshCopy(target: string): boolean {
 /** sh ~/froghub-voice/voice.sh <args> on the target, with a terminal for sudo's password. */
 function sshRun(target: string, args: string[]): boolean {
   return run(['ssh', ...SSH_OPTS, '-t', target, 'sh', 'froghub-voice/voice.sh', ...args], { allowFail: true })
-}
-
-// ---- Home Assistant: Wyoming services and the personalities' pipelines ----
-
-async function setUpHomeAssistant(base: string, token: string, endpoints: (Voice & { host: string; port: number })[]): Promise<void> {
-  const rest = (path: string, body?: unknown) => fetch(`${base}${path}`, {
-    method: body ? 'POST' : 'GET',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  }).then(async r => (r.ok ? r.json() : Promise.reject(new Error(`${path}: ${r.status} ${await r.text()}`))))
-
-  // The Wyoming integration, once per service (HA says "already configured" for one it has)
-  const entries: Record<string, string> = {}
-  for (const e of endpoints) {
-    try {
-      const flow = await rest('/api/config/config_entries/flow', { handler: 'wyoming', show_advanced_options: false })
-      const done = await rest(`/api/config/config_entries/flow/${flow.flow_id}`, { host: e.host, port: e.port })
-      if (done.type === 'create_entry' && done.result?.entry_id) entries[e.key] = done.result.entry_id
-      say(done.type === 'create_entry' ? `Added ${e.name} (${e.host}:${e.port}) to Home Assistant.` : `${e.name}: ${done.reason || done.type}`)
-    } catch (err) {
-      say(`Couldn't add ${e.name} at ${e.host}:${e.port}: ${(err as Error).message}`)
-    }
-  }
-
-  const ws = new WebSocket(base.replace(/^http/, 'ws') + '/api/websocket')
-  let id = 0
-  const waiting = new Map<number, (m: any) => void>()
-  const call = (msg: object) => new Promise<any>(done => {
-    waiting.set(++id, done)
-    ws.send(JSON.stringify({ ...msg, id }))
-  })
-  await new Promise<void>((ready, fail) => {
-    ws.onmessage = ev => {
-      const m = JSON.parse(String(ev.data))
-      if (m.type === 'auth_required') ws.send(JSON.stringify({ type: 'auth', access_token: token }))
-      else if (m.type === 'auth_ok') ready()
-      else if (m.type === 'auth_invalid') fail(new Error('Home Assistant said the token is invalid'))
-      else if (m.type === 'result') waiting.get(m.id)?.(m), waiting.delete(m.id)
-    }
-    ws.onerror = () => fail(new Error(`couldn't connect to ${base}`))
-  }).catch(err => say((err as Error).message))
-  if (ws.readyState !== WebSocket.OPEN) return
-
-  // The entity of the entry just added, if it was new (a service that moved keeps its old entry too); else by name
-  const registry: { entity_id: string; config_entry_id: string | null }[] = (await call({ type: 'config/entity_registry/list' })).result ?? []
-  const states: { entity_id: string }[] = await rest('/api/states')
-  const ids = states.map(s => s.entity_id)
-  const find = (domain: string, key: string, hint: string) =>
-    registry.find(r => entries[key] && r.config_entry_id === entries[key] && r.entity_id.startsWith(`${domain}.`))?.entity_id ??
-    ids.find(id => id.startsWith(`${domain}.`) && id.includes(hint)) ?? ids.find(id => id.startsWith(`${domain}.`))
-  const stt = find('stt', 'whisper', 'whisper')
-  const tts = find('tts', 'piper', 'piper')
-  const wake = find('wake_word', 'openwakeword', 'openwakeword')
-  if (!stt || !tts || !wake) {
-    ws.close()
-    return say(`Couldn't find the speech entities in HA (stt: ${stt}, tts: ${tts}, wake word: ${wake}); give it a minute and run setup again.`)
-  }
-
-  const existing: { id: string; name: string }[] = (await call({ type: 'assist_pipeline/pipeline/list' })).result?.pipelines ?? []
-  for (const p of JSON.parse(readFileSync(join(SETUP, 'voice', 'pipelines.json'), 'utf8'))) {
-    const pipeline = {
-      name: p.name, language: 'en', conversation_engine: 'conversation.home_assistant', conversation_language: 'en',
-      stt_engine: stt, stt_language: 'en', tts_engine: tts, tts_language: p.tts_language, tts_voice: p.tts_voice,
-      wake_word_entity: wake, wake_word_id: 'hey_jarvis', prefer_local_intents: false,
-    }
-    const same = existing.find(e => e.name === p.name)
-    const result = same
-      ? await call({ type: 'assist_pipeline/pipeline/update', pipeline_id: same.id, ...pipeline })
-      : await call({ type: 'assist_pipeline/pipeline/create', ...pipeline })
-    say(result.success ? `${same ? 'Updated' : 'Added'} the "${p.name}" pipeline.` : `"${p.name}": ${result.error?.message}`)
-  }
-  ws.close()
 }
