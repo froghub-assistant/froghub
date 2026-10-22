@@ -97,9 +97,11 @@ if [ "$pm" = apt ]; then
 	run sudo apt-get update -qq
 	add_packages git curl unzip tmux rsync caddy
 else
-	# Fedora has Caddy; the RHEL family (RHEL, CentOS Stream, Rocky, Alma, Oracle) gets it from EPEL, which wants
-	# CRB (CodeReady Builder) on too. Rocky, Alma and CentOS ship epel-release; RHEL itself needs it by URL.
-	if ! grep -q '^ID=fedora' /etc/os-release && ! rpm -q epel-release >/dev/null 2>&1; then
+	# Fedora (and what's built on it: Ultramarine, Nobara…) has Caddy; the RHEL family (RHEL, CentOS Stream, Rocky,
+	# Alma, Oracle) gets it from EPEL, which wants CRB (CodeReady Builder) on too. Rocky, Alma and CentOS ship
+	# epel-release; RHEL itself needs it by URL. (Oracle's ID_LIKE is just "fedora", hence its own ID.)
+	rhel=$(. /etc/os-release && case " $ID ${ID_LIKE:-} " in *" rhel "* | *" centos "* | " ol "*) echo yes ;; esac)
+	if [ "$rhel" = yes ] && ! rpm -q epel-release >/dev/null 2>&1; then
 		add_packages dnf-plugins-core
 		for repo in crb powertools; do
 			dnf repolist --enabled 2>/dev/null | awk '{ print $1 }' | grep -qx "$repo" && break
