@@ -95,13 +95,14 @@ elif command -v podman-compose >/dev/null; then
 else
 	compose=
 fi
-if [ -n "$compose" ] && $sudo $engine container inspect froghub-piper >/dev/null 2>&1 &&
+if [ -n "$compose" ] && { $sudo $engine container inspect froghub-openwakeword || $sudo $engine container inspect froghub-whisper ||
+	$sudo $engine container inspect froghub-piper; } >/dev/null 2>&1 &&
 	ask "Remove the voice containers (wake word, speech-to-text, voices) and their images?" Y; then
 	say "Removing the voice containers"
 	if [ -f "$DIR/setup/voice/compose.yaml" ]; then
 		$sudo $compose -f "$DIR/setup/voice/compose.yaml" down --rmi all || $sudo $compose -f "$DIR/setup/voice/compose.yaml" down
 	else
-		$sudo $engine rm -f froghub-openwakeword froghub-whisper froghub-piper
+		$sudo $engine rm -f froghub-openwakeword froghub-whisper froghub-piper 2>/dev/null || true
 	fi
 	delete "$DIR/setup/voice/data"
 fi

@@ -7,8 +7,8 @@
  *       api          standalone.ts: the Anthropic API and/or an OpenAI-compatible server such as LM Studio
  *   - builds the web app and copies it to the web root
  *   - prints (or adds) the Caddy site block
- *   - optionally starts the voice containers (setup/voice/compose.yaml) and adds them and the four personalities'
- *     pipelines to Home Assistant
+ *   - optionally starts the voice containers (setup/voice/compose.yaml; any of them can be on another computer
+ *     instead) and adds them and the four personalities' pipelines to Home Assistant
  * Run it again any time; every question defaults to what's set now. `--dry-run` shows what it would do.
  */
 import { spawnSync } from 'child_process'
@@ -209,7 +209,7 @@ if (brain === 'claude-code') {
   write(standaloneUnit, render('standalone/froghub-standalone.service', { BUN, CHANNEL_DIR, ENV_FILE: envFile }))
 }
 
-write(join(CONFIG, 'instance.json'), JSON.stringify({ site, haUrl: haUrl === 'none' ? '' : haUrl, timeZone, kids, agentDir }, null, 1) + '\n')
+write(join(CONFIG, 'instance.json'), JSON.stringify({ ...old, site, haUrl: haUrl === 'none' ? '' : haUrl, timeZone, kids, agentDir }, null, 1) + '\n')
 if (weather.latitude !== undefined) write(join(CONFIG, 'weather.json'), JSON.stringify(weather) + '\n')
 if (pinHash) write(join(CONFIG, 'pin'), pinHash + '\n', 0o600)
 
@@ -285,23 +285,68 @@ if (new RegExp(`^${host.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*[,{]`, 'm').t
 
 // ---- 5. voice ----
 
-heading('Voice (wake word, speech-to-text and the voices, all on this computer)')
+heading('Voice (wake word, speech-to-text and the voices)')
+// Each runs here in a container, or on another computer that already runs it (Whisper on a faster PC, say)
+const VOICE = [
+  { key: 'openwakeword', name: 'openWakeWord', what: 'the wake word', port: 10400 },
+  { key: 'whisper', name: 'Whisper', what: 'speech-to-text', port: 10300 },
+  { key: 'piper', name: 'Piper', what: 'the voices', port: 10200 },
+] as const
+type Voice = (typeof VOICE)[number]
 // Just after install.sh, the docker group isn't active until you log in again, so fall back to sudo
 const sudoDocker = has('docker') && !works('docker info') ? ['sudo', '-E'] : []
+const engine = has('docker') ? [...sudoDocker, 'docker'] : has('podman') ? ['podman'] : null
 const compose = works('docker compose version') ? [...sudoDocker, 'docker', 'compose']
   : has('docker-compose') ? [...sudoDocker, 'docker-compose'] : has('podman-compose') ? ['podman-compose'] : null
+const composeFile = join(SETUP, 'voice', 'compose.yaml')
 if (!haUrl || haUrl === 'none') say('Skipped: voice needs Home Assistant.')
-else if (!compose) say('Skipped: needs Docker (or podman-compose). Afterwards: docker compose -f setup/voice/compose.yaml up -d')
-else if (yes('Start the voice containers and set them up in Home Assistant', true)) {
-  const bind = ask('Address HA reaches them on (127.0.0.1 if HA is on this computer, else this computer\'s LAN address)', '127.0.0.1')
-  const env = { ...process.env, VOICE_BIND: bind }
-  say(`\x1b[2m$ VOICE_BIND=${bind} ${compose.join(' ')} -f setup/voice/compose.yaml up -d\x1b[0m`)
-  if (!DRY && spawnSync(compose[0], [...compose.slice(1), '-f', join(SETUP, 'voice', 'compose.yaml'), 'up', '-d'], { stdio: 'inherit', env }).status !== 0)
-    say('Starting them failed; fix that, then run setup again.')
-  else {
-    say('Now a Home Assistant long-lived access token (HA → your profile → Security → Create token). It is only used now, not saved.')
-    const token = secret('Token (Enter to skip)')
-    if (token && !DRY) await setUpHomeAssistant(haUrl, token, bind)
+else if (yes('Set up the voice and add it to Home Assistant', true)) {
+  say('For each: Enter or "here" runs it on this computer in a container; or give host:port of one running elsewhere.')
+  const where: Record<string, string> = {}
+  for (const v of VOICE) {
+    const answer = ask(`${v.name} (${v.what})`, old.voice?.[v.key] || 'here').replace(/^tcp:\/\//, '')
+    where[v.key] = answer === 'here' || answer.includes(':') ? answer : `${answer}:${v.port}`
+  }
+  const here = VOICE.filter(v => where[v.key] === 'here')
+  const elsewhere = VOICE.filter(v => where[v.key] !== 'here')
+  let bind = old.voiceBind || '127.0.0.1'
+  let started = true
+  if (here.length && !compose) {
+    say(`Running ${listNames(here.map(v => v.name))} here needs Docker (or podman-compose). Afterwards run setup again.`)
+    started = false
+  } else if (here.length && compose) {
+    bind = ask('Address HA reaches the ones here on (127.0.0.1 if HA is on this computer, else this computer\'s LAN address)', bind)
+    const services = here.map(v => v.key)
+    say(`\x1b[2m$ VOICE_BIND=${bind} ${compose.join(' ')} -f setup/voice/compose.yaml up -d ${services.join(' ')}\x1b[0m`)
+    if (!DRY && spawnSync(compose[0], [...compose.slice(1), '-f', composeFile, 'up', '-d', ...services], { stdio: 'inherit', env: { ...process.env, VOICE_BIND: bind } }).status !== 0) {
+      say('Starting them failed; fix that, then run setup again.')
+      started = false
+    }
+  }
+  // One that's moved elsewhere doesn't need its container here any more
+  for (const v of elsewhere)
+    if (engine && works(`${engine.join(' ')} container inspect froghub-${v.key}`)) run([...engine, 'rm', '-f', `froghub-${v.key}`], { allowFail: true })
+  if (elsewhere.length)
+    say(`To run ${listNames(elsewhere.map(v => v.name))} on another computer with Frog Hub's settings, from a copy of this repo there:\n` +
+      `  VOICE_BIND=0.0.0.0 docker compose -f setup/voice/compose.yaml up -d ${elsewhere.map(v => v.key).join(' ')}`)
+  if (!DRY) {
+    const instanceFile = join(CONFIG, 'instance.json')
+    writeFileSync(instanceFile, JSON.stringify({ ...readJson(instanceFile), voice: where, voiceBind: bind }, null, 1) + '\n')
+  }
+  if (started) {
+    const endpoints = VOICE.map(v => {
+      const at = where[v.key] === 'here' ? `${bind}:${v.port}` : where[v.key]
+      const colon = at.lastIndexOf(':')
+      return { ...v, host: at.slice(0, colon).replace(/^\[|\]$/g, ''), port: Number(at.slice(colon + 1)) }
+    })
+    if (DRY) {
+      say(`\x1b[2m(would ask for a Home Assistant token, then add ${listNames(endpoints.map(e => `${e.name} at ${e.host}:${e.port}`))}` +
+        ' and add or update the four "Frog Hub · …" pipelines)\x1b[0m')
+    } else {
+      say('Now a Home Assistant long-lived access token (HA → your profile → Security → Create token). It is only used now, not saved.')
+      const token = secret('Token (Enter to skip)')
+      if (token) await setUpHomeAssistant(haUrl, token, endpoints)
+    }
   }
 }
 
@@ -313,7 +358,7 @@ say('After changing the code: ./deploy.sh')
 
 // ---- Home Assistant: Wyoming services and the personalities' pipelines ----
 
-async function setUpHomeAssistant(base: string, token: string, host: string): Promise<void> {
+async function setUpHomeAssistant(base: string, token: string, endpoints: (Voice & { host: string; port: number })[]): Promise<void> {
   const rest = (path: string, body?: unknown) => fetch(`${base}${path}`, {
     method: body ? 'POST' : 'GET',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -321,23 +366,17 @@ async function setUpHomeAssistant(base: string, token: string, host: string): Pr
   }).then(async r => (r.ok ? r.json() : Promise.reject(new Error(`${path}: ${r.status} ${await r.text()}`))))
 
   // The Wyoming integration, once per service (HA says "already configured" for one it has)
-  for (const [name, port] of [['openWakeWord', 10400], ['Whisper', 10300], ['Piper', 10200]] as const) {
+  const entries: Record<string, string> = {}
+  for (const e of endpoints) {
     try {
       const flow = await rest('/api/config/config_entries/flow', { handler: 'wyoming', show_advanced_options: false })
-      const done = await rest(`/api/config/config_entries/flow/${flow.flow_id}`, { host, port })
-      say(done.type === 'create_entry' ? `Added ${name} to Home Assistant.` : `${name}: ${done.reason || done.type}`)
+      const done = await rest(`/api/config/config_entries/flow/${flow.flow_id}`, { host: e.host, port: e.port })
+      if (done.type === 'create_entry' && done.result?.entry_id) entries[e.key] = done.result.entry_id
+      say(done.type === 'create_entry' ? `Added ${e.name} (${e.host}:${e.port}) to Home Assistant.` : `${e.name}: ${done.reason || done.type}`)
     } catch (err) {
-      say(`Couldn't add ${name}: ${(err as Error).message}`)
+      say(`Couldn't add ${e.name} at ${e.host}:${e.port}: ${(err as Error).message}`)
     }
   }
-
-  const states: { entity_id: string }[] = await rest('/api/states')
-  const find = (domain: string, hint: string) =>
-    states.map(s => s.entity_id).find(id => id.startsWith(`${domain}.`) && id.includes(hint)) ?? states.map(s => s.entity_id).find(id => id.startsWith(`${domain}.`))
-  const stt = find('stt', 'whisper')
-  const tts = find('tts', 'piper')
-  const wake = find('wake_word', 'openwakeword')
-  if (!stt || !tts || !wake) return say(`Couldn't find the speech entities in HA (stt: ${stt}, tts: ${tts}, wake word: ${wake}); give it a minute and run setup again.`)
 
   const ws = new WebSocket(base.replace(/^http/, 'ws') + '/api/websocket')
   let id = 0
@@ -357,6 +396,21 @@ async function setUpHomeAssistant(base: string, token: string, host: string): Pr
     ws.onerror = () => fail(new Error(`couldn't connect to ${base}`))
   }).catch(err => say((err as Error).message))
   if (ws.readyState !== WebSocket.OPEN) return
+
+  // The entity of the entry just added, if it was new (a service that moved keeps its old entry too); else by name
+  const registry: { entity_id: string; config_entry_id: string | null }[] = (await call({ type: 'config/entity_registry/list' })).result ?? []
+  const states: { entity_id: string }[] = await rest('/api/states')
+  const ids = states.map(s => s.entity_id)
+  const find = (domain: string, key: string, hint: string) =>
+    registry.find(r => entries[key] && r.config_entry_id === entries[key] && r.entity_id.startsWith(`${domain}.`))?.entity_id ??
+    ids.find(id => id.startsWith(`${domain}.`) && id.includes(hint)) ?? ids.find(id => id.startsWith(`${domain}.`))
+  const stt = find('stt', 'whisper', 'whisper')
+  const tts = find('tts', 'piper', 'piper')
+  const wake = find('wake_word', 'openwakeword', 'openwakeword')
+  if (!stt || !tts || !wake) {
+    ws.close()
+    return say(`Couldn't find the speech entities in HA (stt: ${stt}, tts: ${tts}, wake word: ${wake}); give it a minute and run setup again.`)
+  }
 
   const existing: { id: string; name: string }[] = (await call({ type: 'assist_pipeline/pipeline/list' })).result?.pipelines ?? []
   for (const p of JSON.parse(readFileSync(join(SETUP, 'voice', 'pipelines.json'), 'utf8'))) {

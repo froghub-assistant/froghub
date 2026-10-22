@@ -17,7 +17,8 @@ curl -fsSL https://raw.githubusercontent.com/froghub-assistant/froghub/master/in
 sets up firewalld and SELinux for Caddy). It installs git, Bun, Caddy, tmux and rsync (and, if you say yes, Docker or
 Podman for the voice, and Claude Code), fetches Frog Hub
 to `~/froghub`, then runs `bun run setup`. Already have it? `bun run setup` in the repo does the same questions.
-To see what it would install and change first, without changing anything: `curl -fsSL … | sh -s -- --dry-run`.
+To see what it would install and change first, without changing anything: `curl -fsSL … | sh -s -- --dry-run` (it asks
+the same questions; if Frog Hub is already there, it goes on to setup's own `--dry-run`).
 
 It asks for the site's address, Home Assistant's, the time zone, the children's names, a town for the weather, the
 admin PIN and which brain to use, then:
@@ -30,9 +31,11 @@ admin PIN and which brain to use, then:
 - builds the web app and copies it to the web root;
 - adds a site block to `/etc/caddy/Caddyfile` (asks first, keeps a `.bak-froghub`) or prints it for you;
 - starts the voice containers (`setup/voice/compose.yaml`: openWakeWord, Whisper, Piper) and, with a Home
-  Assistant token it doesn't keep, adds them to HA and creates the four `Frog Hub · <Personality>` pipelines.
+  Assistant token it doesn't keep, adds them to HA and creates the four `Frog Hub · <Personality>` pipelines. Any of
+  the three can be on another computer instead (Whisper on a faster PC, say): answer with its `host:port`, and run it
+  there with `VOICE_BIND=0.0.0.0 docker compose -f setup/voice/compose.yaml up -d whisper` from a copy of this repo.
 
-Run it again to change anything; each answer defaults to what's set now (`--dry-run` shows what it would do). The
+Run it again to change anything; each answer defaults to what's set now (`bun run setup --dry-run` asks the same questions and shows what it would do, changing nothing). The
 assistant's rules (`CLAUDE.md` / `assistant.md`) are only replaced if you say so, since they're yours to tweak.
 Then open the site on each tablet and follow the welcome.
 

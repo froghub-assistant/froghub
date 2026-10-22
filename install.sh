@@ -4,7 +4,8 @@
 # Installs what Frog Hub needs (git, Bun, Caddy, tmux, rsync), fetches it to ~/froghub (or updates it), then runs
 # `bun run setup`, which asks the questions. Run it again to update; your settings in ~/.config/froghub are kept.
 # (Without the questions: ~/froghub/upgrade.sh. To take it all off again: ~/froghub/remove.sh.)
-# --dry-run says what it would install and change, and changes nothing:
+# --dry-run asks the same questions, says what it would install and change, and changes nothing (setup's dry run too,
+# if Frog Hub is already here):
 #   curl -fsSL https://raw.githubusercontent.com/froghub-assistant/froghub/master/install.sh | sh -s -- --dry-run
 #
 # Everything it installs or changes that wasn't there before (packages, including the ones they pulled in, Bun, Claude
@@ -26,10 +27,7 @@ for arg in "$@"; do
 done
 
 say() { printf '\n\033[1;32m%s\033[0m\n' "$*"; }
-ask() {
-	[ "$dry" = no ] || { echo "$1 (dry run: as if yes)"; return 0; }
-	printf '%s ' "$1" >/dev/tty; read -r answer </dev/tty; case "$answer" in [Nn]*) return 1 ;; *) return 0 ;; esac
-}
+ask() { printf '%s ' "$1" >/dev/tty; read -r answer </dev/tty; case "$answer" in [Nn]*) return 1 ;; *) return 0 ;; esac; }
 note() { [ "$dry" = yes ] || grep -qxF "$*" "$MANIFEST" 2>/dev/null || echo "$*" >>"$MANIFEST"; }
 # A command that changes something: in a dry run, only say it
 run() { if [ "$dry" = yes ]; then echo "  would run: $*"; else "$@"; fi; }
@@ -168,8 +166,12 @@ if ! command -v claude >/dev/null && ask "Install Claude Code, for the Claude su
 fi
 
 if [ "$dry" = yes ]; then
-	if [ -d "$DIR/.git" ]; then echo "  would update Frog Hub in $DIR (git pull)"; else echo "  would fetch Frog Hub into $DIR"; fi
-	echo "  would run: bun run setup (it asks its questions then)"
+	if [ -d "$DIR/.git" ] && command -v bun >/dev/null; then
+		echo "  would update Frog Hub in $DIR (git pull), then run its setup:"
+		cd "$DIR"
+		exec bun run setup --dry-run </dev/tty
+	fi
+	echo "  would fetch Frog Hub into $DIR, then run: bun run setup (it asks its questions then)"
 	say "That's all; nothing was changed."
 	exit 0
 fi

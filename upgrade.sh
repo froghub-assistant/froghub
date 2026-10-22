@@ -75,12 +75,20 @@ if [ "$voice" = yes ]; then
 	else
 		compose=
 	fi
-	if [ -n "$compose" ] && $sudo $engine container inspect froghub-piper >/dev/null 2>&1; then
-		bind=$($sudo $engine port froghub-piper 10200 | head -n 1)
+	# only the ones running here (any of them can be on another computer instead)
+	services='' bind=''
+	for service in openwakeword:10400 whisper:10300 piper:10200; do
+		name=${service%:*}
+		if [ -n "$compose" ] && $sudo $engine container inspect "froghub-$name" >/dev/null 2>&1; then
+			services="$services $name"
+			[ -n "$bind" ] || bind=$($sudo $engine port "froghub-$name" "${service#*:}" | head -n 1)
+		fi
+	done
+	if [ -n "$services" ]; then
 		bind=${bind%:*}
 		say "Updating the voice containers"
-		$sudo env VOICE_BIND="${bind:-127.0.0.1}" $compose -f setup/voice/compose.yaml pull
-		$sudo env VOICE_BIND="${bind:-127.0.0.1}" $compose -f setup/voice/compose.yaml up -d
+		$sudo env VOICE_BIND="${bind:-127.0.0.1}" $compose -f setup/voice/compose.yaml pull $services
+		$sudo env VOICE_BIND="${bind:-127.0.0.1}" $compose -f setup/voice/compose.yaml up -d $services
 	fi
 fi
 
