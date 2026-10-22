@@ -17,6 +17,7 @@ curl -fsSL https://raw.githubusercontent.com/froghub-assistant/froghub/master/in
 sets up firewalld and SELinux for Caddy). It installs git, Bun, Caddy, tmux and rsync (and, if you say yes, Docker or
 Podman for the voice, and Claude Code), fetches Frog Hub
 to `~/froghub`, then runs `bun run setup`. Already have it? `bun run setup` in the repo does the same questions.
+To see what it would install and change first, without changing anything: `curl -fsSL … | sh -s -- --dry-run`.
 
 It asks for the site's address, Home Assistant's, the time zone, the children's names, a town for the weather, the
 admin PIN and which brain to use, then:
@@ -41,7 +42,9 @@ It asks nothing; it says when setup's templates changed, so you can run `bun run
 
 **Removing:** `~/froghub/remove.sh` undoes setup: the assistant's service, the voice containers, the web app and the
 Caddy block (a copy is kept as `.bak-froghub-remove`). It asks before each part. Your settings, the assistant's memory
-and Frog Hub's own folder are only deleted if you say so. The programs `install.sh` installed stay.
+and Frog Hub's own folder are only deleted if you say so. Then it offers to undo what `install.sh` added that wasn't
+there before (it keeps a list in `~/.local/share/froghub/installed`): the packages, Bun, Claude Code, the PATH lines,
+the docker group and the firewall and SELinux settings. Packages something else has come to need stay.
 
 ## How it fits together
 
