@@ -3,6 +3,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/froghub-assistant/froghub/master/install.sh | sh
 # Installs what Frog Hub needs (git, Bun, Caddy, tmux, rsync), fetches it to ~/froghub (or updates it), then runs
 # `bun run setup`, which asks the questions. Run it again to update; your settings in ~/.config/froghub are kept.
+# (Without the questions: ~/froghub/upgrade.sh. To take it all off again: ~/froghub/remove.sh.)
 set -eu
 REPO=${FROGHUB_REPO:-https://github.com/froghub-assistant/froghub.git}
 DIR=${FROGHUB_DIR:-$HOME/froghub}

@@ -35,6 +35,14 @@ Run it again to change anything; each answer defaults to what's set now (`--dry-
 assistant's rules (`CLAUDE.md` / `assistant.md`) are only replaced if you say so, since they're yours to tweak.
 Then open the site on each tablet and follow the welcome.
 
+**Updating:** `~/froghub/upgrade.sh` pulls the new code, rebuilds and publishes the web app, restarts the assistant if
+its server changed and updates the voice containers, keeping every setting (`--no-voice` leaves the containers alone).
+It asks nothing; it says when setup's templates changed, so you can run `bun run setup` again to use them.
+
+**Removing:** `~/froghub/remove.sh` undoes setup: the assistant's service, the voice containers, the web app and the
+Caddy block (a copy is kept as `.bak-froghub-remove`). It asks before each part. Your settings, the assistant's memory
+and Frog Hub's own folder are only deleted if you say so. The programs `install.sh` installed stay.
+
 ## How it fits together
 
 ```
