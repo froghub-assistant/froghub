@@ -3,11 +3,15 @@ import { mkdirSync, rmSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { handleMemory } from '../../channel/memory.ts'
 import { agentMemoryDir } from '../../channel/instance.ts'
+import { MEMORY_FILE } from '../../channel/notes.ts'
 import { asAdmin, read, request } from '../helpers.ts'
 
 const get = async (headers: Record<string, string> = {}) => handleMemory(request('GET', '/api/admin/memory', undefined, headers))
 
-beforeEach(() => rmSync(agentMemoryDir, { recursive: true, force: true }))
+beforeEach(() => {
+  rmSync(agentMemoryDir, { recursive: true, force: true })
+  rmSync(MEMORY_FILE, { force: true }) // the API brain's (notes.test.ts)
+})
 
 describe("the admin page's view of the assistant's memory", () => {
   test('needs admin mode', async () => {

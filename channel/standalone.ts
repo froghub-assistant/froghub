@@ -13,11 +13,14 @@
  *   FROGHUB_BIG_MODEL       the bigger one it hands hard questions to (default claude-sonnet-5-5; "none" turns it off)
  *   FROGHUB_FALLBACK_URL    OpenAI-compatible base URL, e.g. http://192.168.1.20:1234/v1 (optional)
  *   FROGHUB_FALLBACK_MODEL  model name there
+ *   FROGHUB_FALLBACK_TOOLS  "all" gives the local model every tool too (default: just reply, memory and web search,
+ *                           which small models cope with better)
+ *   FROGHUB_SEARCH_URL      a SearXNG instance for the local model's web search (default DuckDuckGo; see websearch.ts)
  *   FROGHUB_PROMPT          the assistant's instructions (default ~/.config/froghub/assistant.md)
- *   FROGHUB_MEMORY          its memory file (default ~/.config/froghub/memory.md)
+ *   FROGHUB_MEMORY          its memory file (default ~/.config/froghub/memory.md; see notes.ts)
  *   FROGHUB_PORT            listen port on 127.0.0.1 (default 8790)
  */
-import { appendFileSync, existsSync, readFileSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
 import { SERVICES, type Reply, clean, log } from './common.ts'
@@ -25,7 +28,9 @@ import type { Display } from './display.ts'
 import type { Screen } from './announce.ts'
 import { policy } from './store.ts'
 import { THINK_DESCRIPTION, bigModel } from './thinker.ts'
-import { allowedActions, runTool, tools } from './tools.ts'
+import { type Tool, type ToolContext, type ToolResult, allowedActions, runTool, tools } from './tools.ts'
+import { memoryForPrompt, memoryTools, runMemoryTool } from './notes.ts'
+import { webSearch, webSearchTool } from './websearch.ts'
 import { serve } from './app.ts'
 
 const PORT = Number(process.env.FROGHUB_PORT || 8790)
@@ -35,18 +40,17 @@ const BIG_MODEL = bigModel('claude-sonnet-5-5')
 const FALLBACK_URL = (process.env.FROGHUB_FALLBACK_URL || '').replace(/\/+$/, '')
 const FALLBACK_MODEL = process.env.FROGHUB_FALLBACK_MODEL || ''
 const PROMPT_FILE = process.env.FROGHUB_PROMPT || join(homedir(), '.config', 'froghub', 'assistant.md')
-const MEMORY_FILE = process.env.FROGHUB_MEMORY || join(homedir(), '.config', 'froghub', 'memory.md')
+const FALLBACK_ALL = process.env.FROGHUB_FALLBACK_TOOLS === 'all'
 const TIMEOUT_MS = 40_000
 const HISTORY_TURNS = 6 // per conversation, which the display resets after 5 quiet minutes
-const MAX_MEMORY_CHARS = 6000
 
 type Turn = { role: 'user' | 'assistant'; content: string }
 const conversations = new Map<string, { turns: Turn[]; at: number }>()
 
-const REPLY_TOOL = {
+const REPLY_TOOL: Tool = {
   name: 'reply',
   description: 'Answer what was said to the Frog Hub display. It is spoken aloud and shown on screen.',
-  input_schema: {
+  inputSchema: {
     type: 'object',
     properties: {
       text: { type: 'string', description: 'One to three short spoken sentences; no markdown, emoji or URLs' },
@@ -77,12 +81,6 @@ const THINK_TOOL = {
   input_schema: { type: 'object', properties: { why: { type: 'string', description: 'What needs the extra thought' } } },
 }
 
-const REMEMBER_TOOL = {
-  name: 'remember',
-  description: 'Save a short note to your long-term memory (things people ask you to remember, preferences).',
-  input_schema: { type: 'object', properties: { note: { type: 'string' } }, required: ['note'] },
-}
-
 // What the brain is told about each request (server.ts says the same in its MCP instructions)
 const KINDS: Record<string, string> = {
   announcement: 'This is not someone talking to the display: a grown-up at home wants you to tell the room something ' +
@@ -95,21 +93,28 @@ const KINDS: Record<string, string> = {
 
 function systemPrompt(meta: Record<string, string>): string {
   const rules = existsSync(PROMPT_FILE) ? readFileSync(PROMPT_FILE, 'utf8') : 'You are Frog Hub, a friendly smart display.'
-  const memory = existsSync(MEMORY_FILE) ? readFileSync(MEMORY_FILE, 'utf8').slice(-MAX_MEMORY_CHARS) : ''
   return [
     rules,
     `Right now you are the "${meta.personality}" personality, talking to ${meta.speaker}. It is ${meta.time}.`,
     meta.mode === 'admin' ? 'This request is in admin mode (a grown-up unlocked it with the PIN).' : 'This request is not in admin mode.',
     ...(meta.audience === 'grown-ups' ? ["This display is a grown-ups' one: the children's rules don't apply here."] : []),
     ...(KINDS[meta.kind] ? [KINDS[meta.kind]] : []),
-    memory ? `## Your memory\n\n${memory}` : 'Your memory is empty so far.',
+    memoryForPrompt(),
     'Always answer by calling the reply tool (after any other tools you need).',
   ].join('\n\n')
 }
 
-function remember(note: string): void {
-  const line = clean(note, 300)
-  if (line) appendFileSync(MEMORY_FILE, `- ${line}\n`)
+/** Runs a tool either model called: its memory, web search (the local model's), or the shared ones. */
+async function useTool(name: string, args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult> {
+  const allowed = policy()
+  const off = (what: string) => ({ isError: true, text: `A grown-up has turned off ${what} in Frog Hub's settings.` })
+  try {
+    if (memoryTools.some(t => t.name === name)) return allowed.memory ? { text: runMemoryTool(name, args) } : off('remembering things')
+    if (name === 'web_search') return allowed.webSearch ? { text: await webSearch(String(args.query ?? '')) } : off('web search')
+  } catch (err) {
+    return { isError: true, text: (err as Error).message }
+  }
+  return (await runTool(name, args, ctx)) ?? { isError: true, text: `unknown tool: ${name}` }
 }
 
 type Block = { type: string; id?: string; name?: string; input?: Record<string, unknown> }
@@ -119,7 +124,7 @@ async function askClaude(system: string, messages: Turn[], from: Screen | undefi
   const convo: unknown[] = messages.map(m => ({ role: m.role, content: m.content }))
   const canThink = Boolean(BIG_MODEL) && model !== BIG_MODEL
   const allowed = policy()
-  const shared = tools({ requestIds: false, think: false }).map(t => ({ name: t.name, description: t.description, input_schema: t.inputSchema }))
+  const offered = [REPLY_TOOL, ...(allowed.memory ? memoryTools : []), ...tools({ requestIds: false, think: false })]
   let card: Display | undefined
   for (let round = 0; round < 6; round++) {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -131,7 +136,7 @@ async function askClaude(system: string, messages: Turn[], from: Screen | undefi
         system,
         messages: convo,
         tools: [
-          REPLY_TOOL, ...(allowed.memory ? [REMEMBER_TOOL] : []), ...(canThink ? [THINK_TOOL] : []), ...shared,
+          ...offered.map(t => ({ name: t.name, description: t.description, input_schema: t.inputSchema })), ...(canThink ? [THINK_TOOL] : []),
           ...(allowed.webSearch ? [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }] : []),
         ],
         tool_choice: { type: 'any' },
@@ -148,12 +153,7 @@ async function askClaude(system: string, messages: Turn[], from: Screen | undefi
     // The other tools first (show_on_screen's card goes with the reply), then the reply if there is one
     const results: unknown[] = []
     for (const u of uses.filter(u => u.name !== 'reply')) {
-      let out = { text: 'done', isError: false }
-      if (u.name === 'remember') remember(String(u.input?.note ?? ''))
-      else {
-        const result = await runTool(String(u.name), u.input ?? {}, { from, show: c => void (card = c) })
-        out = result ? { text: result.text, isError: Boolean(result.isError) } : { text: `unknown tool: ${u.name}`, isError: true }
-      }
+      const out = await useTool(String(u.name), u.input ?? {}, { from, show: c => void (card = c) })
       results.push({ type: 'tool_result', tool_use_id: u.id, content: out.text, ...(out.isError ? { is_error: true } : {}) })
     }
     const reply = uses.find(u => u.name === 'reply')
@@ -169,34 +169,55 @@ async function askClaude(system: string, messages: Turn[], from: Screen | undefi
   throw new Error('no reply from the model')
 }
 
-async function askFallback(system: string, messages: Turn[]): Promise<Reply> {
-  const tool = (t: typeof REPLY_TOOL | typeof REMEMBER_TOOL) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } })
-  const r = await fetch(`${FALLBACK_URL}/chat/completions`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: FALLBACK_MODEL,
-      max_tokens: 400,
-      messages: [{ role: 'system', content: system }, ...messages],
-      tools: [tool(REPLY_TOOL), tool(REMEMBER_TOOL)],
-      tool_choice: 'required',
-    }),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  })
-  if (!r.ok) throw new Error(`fallback ${r.status}`)
-  const msg = (await r.json()).choices?.[0]?.message ?? {}
-  let reply: Reply | null = null
-  for (const c of msg.tool_calls ?? []) {
-    let args: Record<string, unknown> = {}
-    try { args = JSON.parse(c.function.arguments || '{}') } catch {}
-    if (c.function.name === 'remember') remember(String(args.note ?? ''))
-    if (c.function.name === 'reply') reply = { text: String(args.text ?? ''), continue_conversation: Boolean(args.continue_conversation), actions: allowedActions(args.actions) }
+/** Asks the local OpenAI-compatible model, running the tools it calls, until it replies. */
+async function askFallback(system: string, messages: Turn[], from: Screen | undefined): Promise<Reply> {
+  const allowed = policy()
+  const offered: Tool[] = [REPLY_TOOL, ...(allowed.memory ? memoryTools : []), ...(allowed.webSearch ? [webSearchTool] : []),
+    ...(FALLBACK_ALL ? tools({ requestIds: false, think: false }) : [])]
+  const convo: unknown[] = [{ role: 'system', content: system }, ...messages]
+  let card: Display | undefined
+  for (let round = 0; round < 5; round++) {
+    const r = await fetch(`${FALLBACK_URL}/chat/completions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: FALLBACK_MODEL,
+        max_tokens: 600,
+        messages: convo,
+        tools: offered.map(t => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.inputSchema } })),
+        tool_choice: 'required',
+      }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    })
+    if (!r.ok) throw new Error(`fallback ${r.status}`)
+    const msg = (await r.json()).choices?.[0]?.message ?? {}
+    const calls: { id?: string; function: { name: string; arguments?: string } }[] = msg.tool_calls ?? []
+    const args = (c: (typeof calls)[number]) => {
+      try {
+        return JSON.parse(c.function.arguments || '{}') as Record<string, unknown>
+      } catch {
+        return {}
+      }
+    }
+    const results: unknown[] = []
+    for (const c of calls.filter(c => c.function.name !== 'reply')) {
+      const out = await useTool(c.function.name, args(c), { from, show: d => void (card = d) })
+      results.push({ role: 'tool', tool_call_id: c.id, content: out.text })
+    }
+    const reply = calls.find(c => c.function.name === 'reply')
+    if (reply) {
+      const a = args(reply)
+      return { text: String(a.text ?? ''), continue_conversation: Boolean(a.continue_conversation), actions: allowedActions(a.actions), ...(card ? { display: card } : {}) }
+    }
+    // A local model that just talks instead of calling reply: that's the answer
+    if (!calls.length) {
+      if (typeof msg.content === 'string' && msg.content.trim() && !/[{}]/.test(msg.content))
+        return { text: msg.content.trim().slice(0, 300), continue_conversation: false, actions: [], ...(card ? { display: card } : {}) }
+      break
+    }
+    convo.push({ role: 'assistant', content: msg.content ?? null, tool_calls: calls }, ...results)
   }
-  if (!reply && typeof msg.content === 'string' && msg.content.trim() && !/[{}]/.test(msg.content)) {
-    reply = { text: msg.content.trim().slice(0, 300), continue_conversation: false, actions: [] }
-  }
-  if (!reply) throw new Error('fallback gave no reply')
-  return reply
+  throw new Error('fallback gave no reply')
 }
 
 /** app.ts's way of asking: with this conversation's last few exchanges (none for announcements and scheduled jobs). */
@@ -219,7 +240,7 @@ async function askAssistant(content: string, meta: Record<string, string>, from?
   }
   if (!answer && FALLBACK_URL) {
     try {
-      answer = await askFallback(system, messages)
+      answer = await askFallback(system, messages, from)
     } catch (err) {
       log(`fallback failed: ${err}`)
     }

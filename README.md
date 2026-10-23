@@ -138,6 +138,18 @@ announcement, so "tell them the weather for the walk" is worked out then). Jobs 
 `~/.config/froghub/schedule.json`, run in the house's time zone and survive restarts; at most 30, and a repeating one
 at most 4 times an hour. `list_schedule` and `cancel_schedule` manage them. Both use the `announce` policy switch.
 
+## The API brain's memory and web search
+
+The API brain keeps its memory as one list in `~/.config/froghub/memory.md` (shown on the admin page with the Claude
+Code brain's files). All of it goes into every prompt, and its `remember`, `change_memory` and `forget` tools keep it
+tidy, so "forget that" from the admin page really does. Past about 6,000 characters it's told to merge or forget old
+notes, and only the newest part is shown to it.
+
+Claude searches the web with Anthropic's own search tool. The local model (LM Studio) gets a `web_search` tool that
+reads DuckDuckGo's results, or a SearXNG instance's if `FROGHUB_SEARCH_URL` points at one (with `format=json` allowed).
+It's only offered reply, memory and web search, since small models get lost among many tools;
+`FROGHUB_FALLBACK_TOOLS=all` gives it the lot. The grown-ups' memory and web search switches apply to both.
+
 ## Recipes
 
 The assistant's `find_recipe` tool uses [TheMealDB](https://www.themealdb.com): a recipe by name, ideas by main

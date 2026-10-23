@@ -13,6 +13,7 @@ Object.assign(process.env, {
   FROGHUB_BIG_MODEL: 'big-model',
   FROGHUB_FALLBACK_URL: 'http://fallback.test/v1/',
   FROGHUB_FALLBACK_MODEL: 'local-model',
+  FROGHUB_SEARCH_URL: 'http://search.test',
 })
 const MEMORY = join(CONFIG, 'memory.md')
 writeFileSync(join(CONFIG, 'assistant.md'), 'You are Frog Hub (test rules).')
@@ -21,10 +22,15 @@ type Body = { model: string; system?: string; messages: { role: string; content:
 let claude: (body: Body) => Response = () => new Response('down', { status: 500 })
 let fallback: (body: Body) => Response = () => new Response('down', { status: 500 })
 const asked: { to: 'claude' | 'fallback'; body: Body }[] = []
+const searched: string[] = []
 
 const realFetch = globalThis.fetch
 spyOn(globalThis, 'fetch').mockImplementation((async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = String(input instanceof Request ? input.url : input)
+  if (url.startsWith('http://search.test/search')) {
+    searched.push(new URL(url).searchParams.get('q')!)
+    return Response.json({ results: [{ title: 'Red panda', url: 'https://en.wikipedia.org/wiki/Red_panda', content: 'Lives 8 to 10 years.' }] })
+  }
   if (url === 'https://api.anthropic.com/v1/messages' || url === 'http://fallback.test/v1/chat/completions') {
     const to = url.includes('anthropic') ? 'claude' : 'fallback'
     const body = JSON.parse(String(init?.body))
@@ -97,7 +103,7 @@ describe('answering', () => {
     const a = await ask({ text: 'Remember I like red pandas', conversation_id: 'c3' })
     expect(a.text).toBe('I will remember that.')
     expect(readFileSync(MEMORY, 'utf8')).toBe('- Sam likes red pandas\n')
-    expect(asked[1].body.messages.at(-1)).toEqual({ role: 'user', content: [{ type: 'tool_result', tool_use_id: 't-remember', content: 'done' }] })
+    expect(asked[1].body.messages.at(-1)).toEqual({ role: 'user', content: [{ type: 'tool_result', tool_use_id: 't-remember', content: 'Remembered.' }] })
   })
 
   test('what it remembers is in the next system prompt', async () => {
@@ -131,6 +137,27 @@ describe('when Claude fails', () => {
     const { body } = asked[1]
     expect(body.model).toBe('local-model')
     expect(body.messages[0]).toMatchObject({ role: 'system' })
+  })
+
+  test('the local model can search the web and remember, then reply', async () => {
+    let round = 0
+    fallback = () => Response.json({ choices: [{ message: ++round === 1
+      ? { content: null, tool_calls: [
+          { id: 'c1', function: { name: 'web_search', arguments: '{"query":"red panda lifespan"}' } },
+          { id: 'c2', function: { name: 'remember', arguments: '{"note":"Sam asked about red pandas"}' } },
+        ] }
+      : { tool_calls: [{ id: 'c3', function: { name: 'reply', arguments: '{"text":"About 8 to 10 years."}' } }] } }] })
+    const a = await ask({ text: 'How long do red pandas live?', conversation_id: 'c6b' })
+    expect(a.text).toBe('About 8 to 10 years.')
+    expect(searched).toEqual(['red panda lifespan'])
+    expect(readFileSync(MEMORY, 'utf8')).toBe('- Sam asked about red pandas\n')
+    const second = asked.filter(x => x.to === 'fallback')[1].body.messages
+    expect(second.slice(-2)).toEqual([
+      { role: 'tool', tool_call_id: 'c1', content: '1. Red panda\nhttps://en.wikipedia.org/wiki/Red_panda\nLives 8 to 10 years.' },
+      { role: 'tool', tool_call_id: 'c2', content: 'Remembered.' },
+    ])
+    const names = asked.find(x => x.to === 'fallback')!.body.tools.map((t: any) => t.function.name)
+    expect(names).toEqual(['reply', 'remember', 'change_memory', 'forget', 'web_search']) // not all 15: small models get lost
   })
 
   test('a local model that just talks (no tool call) still counts', async () => {
