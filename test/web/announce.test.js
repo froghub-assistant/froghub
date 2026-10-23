@@ -3,7 +3,7 @@ import { fakeFetch, settle } from './browser.js'
 import { otherDisplays, sendMessage, startAnnouncements } from '../../src/lib/announce.js'
 
 const realFetch = globalThis.fetch
-const me = { ready: true, id: 'kitchen1', name: 'Kitchen', area: 'kitchen', areaName: 'Kitchen', who: 'Sam & Jo', personality: 'frog' }
+const me = { ready: true, id: 'kitchen1', name: 'Kitchen', area: 'kitchen', areaName: 'Kitchen', who: 'Sam & Jo', personality: 'frog', micMuted: true, volume: 0 }
 
 let timer
 beforeEach(() => jest.useFakeTimers())
@@ -26,7 +26,7 @@ async function run(answers, getMe = () => me) {
 describe('announcements', () => {
   test("each poll says who this display is", async () => {
     const { calls } = await run([])
-    expect(calls[0][0]).toBe('/api/announcements?after=0&device=kitchen1&name=Kitchen&area=kitchen&areaName=Kitchen&who=Sam%20%26%20Jo&personality=frog')
+    expect(calls[0][0]).toBe('/api/announcements?after=0&device=kitchen1&name=Kitchen&area=kitchen&areaName=Kitchen&who=Sam%20%26%20Jo&personality=frog&micMuted=true&volume=0')
   })
 
   test("what was there before it started isn't played; what comes after is", async () => {
