@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
 import { agentMemoryDir, instance } from '../../channel/instance.ts'
@@ -56,6 +56,14 @@ describe('policy', () => {
     const { allow, deny } = agentSettings()
     expect(allow).toContain('WebSearch')
     expect(deny).not.toContain('WebSearch')
+  })
+
+  test("with the API brain (no Claude Code settings) switches are just saved", async () => {
+    rmSync(AGENT_SETTINGS)
+    const res = await handleStore(request('POST', '/api/policy', { webSearch: false }, await asAdmin()), '/api/policy')
+    expect(res.status).toBe(200)
+    expect(await read(res)).toMatchObject({ ok: true, restarting: false })
+    expect(policy().webSearch).toBe(false)
   })
 })
 

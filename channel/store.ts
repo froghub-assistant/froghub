@@ -74,6 +74,7 @@ export function setGrownUps(device: unknown, on: boolean): boolean {
 /** Web search and memory are Claude Code tools, so they're switched in the assistant's own settings (then restart). */
 function applyToAgent(p: Policy): boolean {
   const s = read(AGENT_SETTINGS)
+  if (!s?.permissions) return false // the API brain: it reads the policy itself
   const allow = new Set<string>(s.permissions.allow)
   const deny = new Set<string>(s.permissions.deny)
   const toggle = (rules: string[], on: boolean) => {
