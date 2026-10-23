@@ -10,6 +10,7 @@
       "mcp__froghub__find_recipe",
       "mcp__froghub__calculate",
       "mcp__froghub__convert_units",
+      "mcp__froghub__wikipedia",
       "mcp__froghub__set_alarm",
       "mcp__froghub__set_timer",
       "mcp__froghub__list_alarms",

@@ -6,6 +6,7 @@ import { type Reply, cleanActions, clean } from './common.ts'
 import { weatherTool, getWeather } from './weather.ts'
 import { findRecipe, recipeTool } from './recipes.ts'
 import { mathsTools, runMathsTool } from './maths.ts'
+import { lookUp, wikipediaTool } from './wikipedia.ts'
 import { alarmTools, runAlarmTool } from './alarms.ts'
 import { type Display, displayTool, cleanDisplay } from './display.ts'
 import { type Screen, announce, findDisplay, message, onlineDisplays } from './announce.ts'
@@ -68,7 +69,7 @@ const sendMessageTool: Tool = {
 /** The tools, for a brain that passes request_id to them (Claude Code) or not (the API brain). think_harder is
  * only offered with `think` (the API brain has its own, which hands the whole request over). */
 export function tools(o: { requestIds: boolean; think: boolean }): Tool[] {
-  const list: Tool[] = [weatherTool, recipeTool(), ...mathsTools, ...alarmTools, displayTool, ...(o.think && bigModel('sonnet') ? [thinkTool] : []),
+  const list: Tool[] = [weatherTool, recipeTool(), ...mathsTools, wikipediaTool, ...alarmTools, displayTool, ...(o.think && bigModel('sonnet') ? [thinkTool] : []),
     announceTool, ...scheduleTools, sendMessageTool]
   if (o.requestIds) return list
   return list.map(t => {
@@ -91,6 +92,10 @@ export async function runTool(name: string, args: Record<string, unknown>, ctx: 
     }
     if (name === 'find_recipe') return { text: await findRecipe(args) }
     if (name === 'calculate' || name === 'convert_units') return { text: runMathsTool(name, args) }
+    if (name === 'wikipedia') {
+      if (!allowed.webSearch) return off('looking things up online')
+      return { text: await lookUp(args) }
+    }
     if (name === 'show_on_screen') {
       if (!allowed.screen) return off('showing things on the screen')
       if (!ctx.show) return { isError: true, text: 'No open request with that id: call show_on_screen before reply.' }
