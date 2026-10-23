@@ -144,6 +144,47 @@ describe('when Claude fails', () => {
   })
 })
 
+describe('the shared tools', () => {
+  test('it can use them (an alarm here), and gets their results before replying', async () => {
+    let round = 0
+    claude = () => (++round === 1 ? Response.json({ content: [tool('set_timer', { minutes: 10, label: 'Cookies' })] }) : says('Timer set.'))
+    expect((await ask({ text: 'Ten minute timer for the cookies', conversation_id: 't1' })).text).toBe('Timer set.')
+    const result = (asked[1].body.messages.at(-1)!.content as { content: string }[])[0]
+    expect(result.content).toMatch(/^Set \w{4}: timer "Cookies"/)
+    expect(JSON.parse(readFileSync(join(CONFIG, 'alarms.json'), 'utf8'))[0]).toMatchObject({ label: 'Cookies' })
+    expect(asked[0].body.tools.map(t => t.name)).toEqual(expect.arrayContaining(['get_weather', 'find_recipe', 'show_on_screen', 'announce', 'schedule', 'send_message']))
+  })
+
+  test("show_on_screen's card goes with the reply in the same turn", async () => {
+    claude = () => Response.json({ content: [tool('show_on_screen', { title: 'Red panda', emoji: '🐼' }), tool('reply', { text: 'Here it is.' })] })
+    expect(await ask({ text: 'Show me a red panda', conversation_id: 't2' })).toMatchObject({ text: 'Here it is.', display: { title: 'Red panda', emoji: '🐼' } })
+  })
+
+  test("what a grown-up turned off isn't offered, and a tool says so if called anyway", async () => {
+    writeFileSync(join(CONFIG, 'policy.json'), JSON.stringify({ webSearch: false, memory: false, weather: false }))
+    let round = 0
+    claude = () => (++round === 1 ? Response.json({ content: [tool('get_weather', {})] }) : says('I can\'t check the weather.'))
+    await ask({ text: 'Weather?', conversation_id: 't3' })
+    rmSync(join(CONFIG, 'policy.json'))
+    const names = asked[0].body.tools.map(t => t.name)
+    expect(names).not.toContain('remember')
+    expect(names).not.toContain('web_search')
+    expect(asked[1].body.messages.at(-1)!.content).toEqual([{ type: 'tool_result', tool_use_id: 't-get_weather', content: "A grown-up has turned off the weather in Frog Hub's settings.", is_error: true }])
+  })
+
+  test('an announcement is asked as one, without the conversation', async () => {
+    claude = () => says('Tea is ready, everyone!')
+    const r = await realFetch(`http://127.0.0.1:${PORT}/local/announce`, { method: 'POST', body: JSON.stringify({ prompt: 'Say tea is ready' }) })
+    expect(await r.json()).toMatchObject({ ok: true, text: 'Tea is ready, everyone!' })
+    expect(asked[0].body.system).toContain('a grown-up at home wants you to tell the room something unprompted')
+    expect(asked[0].body.messages).toEqual([{ role: 'user', content: 'Say tea is ready' }])
+  })
+
+  test("the display's other routes are there too (alarms here)", async () => {
+    expect((await realFetch(`http://127.0.0.1:${PORT}/api/alarms`)).status).toBe(200)
+  })
+})
+
 describe('bad requests', () => {
   test('no text, or not JSON', async () => {
     expect((await ask({ text: '   ' })).status).toBe(400)

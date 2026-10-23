@@ -27,7 +27,8 @@ admin PIN and which brain to use, then:
 - installs the assistant as a systemd user service: **Claude Code** on Haiku with your Claude subscription
   (`setup/agent/` → `~/froghub-agent`, unit `froghub-agent`), or **standalone** (`channel/standalone.ts`: the
   Anthropic API and/or a local OpenAI-compatible model such as LM Studio; key in `~/.config/froghub/standalone.env`,
-  rules in `~/.config/froghub/assistant.md`, unit `froghub-standalone`);
+  rules in `~/.config/froghub/assistant.md`, unit `froghub-standalone`). Both serve the same HTTP API (`channel/app.ts`)
+  and have the same tools (`channel/tools.ts`: weather, recipes, alarms, cards, messages, announcements, schedules);
 - builds the web app and copies it to the web root;
 - adds a site block to `/etc/caddy/Caddyfile` (asks first, keeps a `.bak-froghub`) or prints it for you;
 - starts the voice containers (`setup/voice/compose.yaml`: openWakeWord, Whisper, Piper) and, with a Home
@@ -142,8 +143,7 @@ at most 4 times an hour. `list_schedule` and `cancel_schedule` manage them. Both
 The assistant's `find_recipe` tool uses [TheMealDB](https://www.themealdb.com): a recipe by name, ideas by main
 ingredient, category (Dessert, Vegetarian…) or cuisine (British, Indian…), or one at random. It can put the picture and
 the ingredients on screen (`show_on_screen` accepts TheMealDB's pictures) and say the measures in grams and °C. It uses
-TheMealDB's free key `1` (personal and educational use); set `FROGHUB_MEALDB_KEY` for your own. Claude Code brain only,
-like the weather and alarms.
+TheMealDB's free key `1` (personal and educational use); set `FROGHUB_MEALDB_KEY` for your own.
 
 ## Thinking harder, and a fresh start
 
