@@ -1,6 +1,8 @@
-import { afterAll, beforeEach, describe, expect, spyOn, test } from 'bun:test'
+import { afterAll, afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test'
+import { rmSync, writeFileSync } from 'fs'
 import { cleanDisplay } from '../../channel/display.ts'
-import { describeMeal, findRecipe } from '../../channel/recipes.ts'
+import { describeMeal, describeRecipe, findRecipe, RECIPEAPI_KEY_FILE, type Recipe, recipeTool } from '../../channel/recipes.ts'
+import { tools } from '../../channel/tools.ts'
 
 // TheMealDB, cut down to what find_recipe reads
 const PIE = {
@@ -14,15 +16,19 @@ const LIST = Array.from({ length: 15 }, (_, i) => ({ idMeal: String(53000 + i), 
 
 const asked: string[] = []
 let answer: (path: string) => unknown = () => ({ meals: null })
-const fetchSpy = spyOn(globalThis, 'fetch').mockImplementation((async (input: RequestInfo | URL) => {
+let status = 200
+let auth: string | null = null
+const fetchSpy = spyOn(globalThis, 'fetch').mockImplementation((async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = String(input)
-  asked.push(url.replace('https://www.themealdb.com/api/json/v1/1/', ''))
-  return Response.json(answer(asked.at(-1)!))
+  asked.push(url.replace('https://www.themealdb.com/api/json/v1/1/', '').replace('https://recipeapi.io/api/v1/', 'recipeapi:'))
+  auth = new Headers(init?.headers).get('authorization')
+  return Response.json(answer(asked.at(-1)!), { status })
 }) as typeof fetch)
 afterAll(() => fetchSpy.mockRestore())
 beforeEach(() => {
   asked.length = 0
   answer = () => ({ meals: null })
+  status = 200
 })
 
 describe('describeMeal', () => {
@@ -80,5 +86,87 @@ describe('recipe pictures on the screen', () => {
     expect((await cleanDisplay({ image_url: PIE.strMealThumb })).image).toBe(PIE.strMealThumb)
     for (const url of ['https://www.themealdb.com/api/json/v1/1/random.php', 'https://www.themealdb.com.evil.com/images/x.jpg', 'http://www.themealdb.com/images/x.jpg'])
       await expect(cleanDisplay({ image_url: url })).rejects.toThrow('Pictures must be')
+  })
+})
+
+// recipeapi.io, cut down to what find_recipe reads
+const TOSTADAS: Recipe = {
+  id: 449, name: 'Beef Tostadas', description: 'Crispy tortillas topped with seasoned beef.', difficulty: 'easy',
+  meal_type: 'side_dish', cuisine: 'mexican', dietary_tags: ['nut_free', 'gluten_free'], servings: 6, prep_time: 15,
+  cook_time: 20, calories_per_serving: 450, protein: 25,
+  instructions: ['Brown the beef.', ' Warm the shells. '],
+  ingredients: [
+    { name: 'Garlic', quantity: 2, unit: 'clove', optional: false },
+    { name: 'Cheddar cheese', quantity: 100, unit: 'g', optional: true },
+    { name: 'Salt', quantity: null, unit: null },
+  ],
+}
+const page = (data: Recipe[], total = data.length) => ({ data, meta: { total, per_page: 10 } })
+
+describe('recipeapi.io, with a key', () => {
+  beforeEach(() => writeFileSync(RECIPEAPI_KEY_FILE, 'sk_live_test\n'))
+  afterEach(() => rmSync(RECIPEAPI_KEY_FILE, { force: true }))
+
+  test('describeRecipe: what it is, how long, nutrition, ingredients and the numbered method', () => {
+    expect(describeRecipe(TOSTADAS)).toBe([
+      'Beef Tostadas (id 449): easy Mexican side dish, nut free, gluten free; serves 6; 15 min prep, 20 min cooking; 450 kcal and 25 g protein a serving',
+      'Crispy tortillas topped with seasoned beef.',
+      'Ingredients: 2 clove Garlic; 100 g Cheddar cheese (optional); Salt',
+      'Method:\n1. Brown the beef.\n2. Warm the shells.',
+    ].join('\n'))
+  })
+
+  test('the tool offers its filters, and the key goes as a Bearer token', async () => {
+    expect(Object.keys(recipeTool().inputSchema.properties)).toContain('diet')
+    expect(tools({ requestIds: false, think: false }).find(t => t.name === 'find_recipe')!.description).toContain('recipeapi.io')
+    answer = () => ({ data: TOSTADAS })
+    await findRecipe({ id: '449' })
+    expect(asked).toEqual(['recipeapi:recipes/449'])
+    expect(auth).toBe('Bearer sk_live_test')
+  })
+
+  test('by name gives the first in full and lists the others', async () => {
+    answer = () => page([TOSTADAS, { id: 7, name: 'Chicken Tostadas', prep_time: 10 }], 14)
+    const text = await findRecipe({ name: 'tostadas' })
+    expect(asked).toEqual(['recipeapi:recipes?search=tostadas&per_page=10'])
+    expect(text).toStartWith('Beef Tostadas (id 449)')
+    expect(text).toEndWith('Others (14 in all): 7: Chicken Tostadas (10 min)')
+  })
+
+  test('filters make a list of ideas, tidied into what the API takes', async () => {
+    answer = () => page([TOSTADAS, { id: 7, name: 'Chicken Tostadas' }], 30)
+    const text = await findRecipe({ ingredients: 'beef, cheese ,', cuisine: 'Mexican', meal_type: 'Side dish', diet: 'gluten-free', max_prep_minutes: 20.4, max_calories: -5 })
+    expect(asked).toEqual(['recipeapi:recipes?ingredients=beef%2Ccheese&cuisine=mexican&meal_type=side_dish&dietary_tags=gluten_free&prep_time_max=20&per_page=10'])
+    expect(text.split('\n')).toEqual([
+      '30 recipes for the ingredients beef,cheese, the cuisine mexican, the meal side_dish, the diet gluten_free, minutes of prep at most 20, the first 2 (look one up by id):',
+      '449: Beef Tostadas (35 min)',
+      '7: Chicken Tostadas',
+    ])
+  })
+
+  test('random takes the same filters', async () => {
+    answer = () => ({ data: TOSTADAS })
+    expect(await findRecipe({ random: true, difficulty: 'Easy' })).toStartWith('Beef Tostadas')
+    expect(asked).toEqual(['recipeapi:recipes/random?difficulty=easy'])
+  })
+
+  test('says when there is nothing, or nothing was asked, or the API says no', async () => {
+    answer = () => page([])
+    await expect(findRecipe({ name: 'zzz' })).rejects.toThrow('recipeapi.io has nothing for the name zzz')
+    await expect(findRecipe({})).rejects.toThrow('Give a name, id, ingredients')
+    await expect(findRecipe({ id: '52802; drop' })).rejects.toThrow("isn't a recipe id")
+    status = 401
+    await expect(findRecipe({ id: '1' })).rejects.toThrow('recipeapi.io turned the key down')
+    status = 429
+    answer = () => ({ error: { code: 'USAGE_LIMIT_EXCEEDED', message: 'Monthly API usage limit exceeded.' } })
+    await expect(findRecipe({ random: true })).rejects.toThrow('recipeapi.io answered 429: Monthly API usage limit exceeded.')
+  })
+
+  test('an empty key file means TheMealDB again', async () => {
+    writeFileSync(RECIPEAPI_KEY_FILE, '\n')
+    expect(recipeTool().description).toStartWith('Recipes from TheMealDB')
+    answer = () => ({ meals: [PIE] })
+    await findRecipe({ random: true })
+    expect(asked).toEqual(['random.php'])
   })
 })

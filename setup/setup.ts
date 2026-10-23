@@ -145,6 +145,22 @@ if (town && town !== oldWeather.place) {
   }
 }
 
+heading('Recipes')
+say('Recipes come from TheMealDB (free, with pictures). With a recipeapi.io key (recipeapi.io → Dashboard; the free plan')
+say('allows 500 requests a month) they come from there instead: 50,000 recipes with diet, time and calorie filters, no pictures.')
+const recipeKeyFile = join(CONFIG, 'recipeapi.key')
+const oldRecipeKey = existsSync(recipeKeyFile) ? readFileSync(recipeKeyFile, 'utf8').trim() : ''
+let recipeKey = ''
+for (;;) {
+  recipeKey = secret(oldRecipeKey ? 'recipeapi.io key (Enter to keep it; "none" for TheMealDB)' : 'recipeapi.io key (Enter for TheMealDB)')
+  if (!recipeKey || recipeKey === 'none' || DRY) break
+  const r = await fetch('https://recipeapi.io/api/v1/recipes?per_page=1', { headers: { Authorization: `Bearer ${recipeKey}` }, signal: AbortSignal.timeout(10_000) })
+    .catch(() => null)
+  if (r?.status === 401) { say('recipeapi.io turned that key down.'); continue }
+  if (!r?.ok) say(`Couldn't check it (${r ? `recipeapi.io answered ${r.status}` : 'no answer'}); keeping it anyway.`)
+  break
+}
+
 heading('Admin PIN (for grown-ups: settings, the admin page, announcements)')
 const hasPin = existsSync(join(CONFIG, 'pin'))
 let pinHash = ''
@@ -224,6 +240,7 @@ if (brain === 'claude-code') {
 write(join(CONFIG, 'instance.json'), JSON.stringify({ ...old, site, haUrl: haUrl === 'none' ? '' : haUrl, timeZone, kids, agentDir }, null, 1) + '\n')
 if (weather.latitude !== undefined) write(join(CONFIG, 'weather.json'), JSON.stringify(weather) + '\n')
 if (pinHash) write(join(CONFIG, 'pin'), pinHash + '\n', 0o600)
+if (recipeKey) write(recipeKeyFile, recipeKey === 'none' ? '' : recipeKey + '\n', 0o600)
 
 // Both brains listen on the same port, so only one runs
 const [unit, other] = brain === 'claude-code' ? ['froghub-agent', 'froghub-standalone'] : ['froghub-standalone', 'froghub-agent']

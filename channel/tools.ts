@@ -67,7 +67,7 @@ const sendMessageTool: Tool = {
 /** The tools, for a brain that passes request_id to them (Claude Code) or not (the API brain). think_harder is
  * only offered with `think` (the API brain has its own, which hands the whole request over). */
 export function tools(o: { requestIds: boolean; think: boolean }): Tool[] {
-  const list: Tool[] = [weatherTool, recipeTool, ...alarmTools, displayTool, ...(o.think && bigModel('sonnet') ? [thinkTool] : []),
+  const list: Tool[] = [weatherTool, recipeTool(), ...alarmTools, displayTool, ...(o.think && bigModel('sonnet') ? [thinkTool] : []),
     announceTool, ...scheduleTools, sendMessageTool]
   if (o.requestIds) return list
   return list.map(t => {

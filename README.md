@@ -157,6 +157,13 @@ ingredient, category (Dessert, Vegetarian…) or cuisine (British, Indian…), o
 the ingredients on screen (`show_on_screen` accepts TheMealDB's pictures) and say the measures in grams and °C. It uses
 TheMealDB's free key `1` (personal and educational use); set `FROGHUB_MEALDB_KEY` for your own.
 
+With a [recipeapi.io](https://recipeapi.io) key, which setup asks for, it uses that instead: over 50,000 recipes in
+metric, searchable by name or by what's in the fridge, and filtered by cuisine, meal, difficulty, diet (vegetarian,
+gluten free, halal…), preparation time and calories, with nutrition per serving. It has no pictures, so the assistant
+shows the ingredients or steps instead. The free plan allows 500 requests a month, and each search or look-up is one.
+The key is kept in `~/.config/froghub/recipeapi.key` (`FROGHUB_RECIPEAPI_KEY` overrides it); "none" in setup goes back
+to TheMealDB.
+
 ## Thinking harder, and a fresh start
 
 The assistant is Haiku, which is quick. For what needs real thought (homework, a careful explanation, planning) it can
