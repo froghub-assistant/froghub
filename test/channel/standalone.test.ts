@@ -157,7 +157,8 @@ describe('when Claude fails', () => {
       { role: 'tool', tool_call_id: 'c2', content: 'Remembered.' },
     ])
     const names = asked.find(x => x.to === 'fallback')!.body.tools.map((t: any) => t.function.name)
-    expect(names).toEqual(['reply', 'remember', 'change_memory', 'forget', 'web_search']) // not all 15: small models get lost
+    expect(names.slice(0, 5)).toEqual(['reply', 'remember', 'change_memory', 'forget', 'web_search'])
+    expect(names).toEqual(expect.arrayContaining(['get_weather', 'find_recipe', 'set_alarm', 'show_on_screen', 'announce', 'schedule']))
   })
 
   test('a local model that just talks (no tool call) still counts', async () => {

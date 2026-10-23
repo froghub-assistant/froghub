@@ -13,8 +13,8 @@
  *   FROGHUB_BIG_MODEL       the bigger one it hands hard questions to (default claude-sonnet-5-5; "none" turns it off)
  *   FROGHUB_FALLBACK_URL    OpenAI-compatible base URL, e.g. http://192.168.1.20:1234/v1 (optional)
  *   FROGHUB_FALLBACK_MODEL  model name there
- *   FROGHUB_FALLBACK_TOOLS  "all" gives the local model every tool too (default: just reply, memory and web search,
- *                           which small models cope with better)
+ *   FROGHUB_FALLBACK_TOOLS  "basic" offers the local model only reply, memory and web search, for a small model
+ *                           that gets lost among many tools (default: all of them)
  *   FROGHUB_SEARCH_URL      a SearXNG instance for the local model's web search (default DuckDuckGo; see websearch.ts)
  *   FROGHUB_PROMPT          the assistant's instructions (default ~/.config/froghub/assistant.md)
  *   FROGHUB_MEMORY          its memory file (default ~/.config/froghub/memory.md; see notes.ts)
@@ -40,7 +40,7 @@ const BIG_MODEL = bigModel('claude-sonnet-5-5')
 const FALLBACK_URL = (process.env.FROGHUB_FALLBACK_URL || '').replace(/\/+$/, '')
 const FALLBACK_MODEL = process.env.FROGHUB_FALLBACK_MODEL || ''
 const PROMPT_FILE = process.env.FROGHUB_PROMPT || join(homedir(), '.config', 'froghub', 'assistant.md')
-const FALLBACK_ALL = process.env.FROGHUB_FALLBACK_TOOLS === 'all'
+const FALLBACK_ALL = process.env.FROGHUB_FALLBACK_TOOLS !== 'basic'
 const TIMEOUT_MS = 40_000
 const HISTORY_TURNS = 6 // per conversation, which the display resets after 5 quiet minutes
 

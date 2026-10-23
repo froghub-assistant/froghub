@@ -147,8 +147,8 @@ notes, and only the newest part is shown to it.
 
 Claude searches the web with Anthropic's own search tool. The local model (LM Studio) gets a `web_search` tool that
 reads DuckDuckGo's results, or a SearXNG instance's if `FROGHUB_SEARCH_URL` points at one (with `format=json` allowed).
-It's only offered reply, memory and web search, since small models get lost among many tools;
-`FROGHUB_FALLBACK_TOOLS=all` gives it the lot. The grown-ups' memory and web search switches apply to both.
+It has all the other tools too; for a small model that gets lost among them, `FROGHUB_FALLBACK_TOOLS=basic` offers only
+reply, memory and web search. The grown-ups' memory and web search switches apply to both.
 
 ## Recipes
 
