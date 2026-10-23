@@ -8,6 +8,7 @@ import { handleAlarms } from './alarms.ts'
 import { handleStore, isGrownUps, policy, sharedSettings } from './store.ts'
 import { handleRegistry } from './registry.ts'
 import { handleMemory } from './memory.ts'
+import { handleHistory, logged } from './history.ts'
 import { handleInstance } from './instance.ts'
 import { handlePair } from './pair.ts'
 import { type Display, cleanDisplay } from './display.ts'
@@ -124,8 +125,9 @@ export async function runJob(ask: Ask, job: Job): Promise<void> {
     log(`schedule: the assistant didn't answer "${job.label}"`)
 }
 
-/** The request handler: every route, with `ask` for the ones that need the assistant. */
-export function routes(ask: Ask, ping: () => Record<string, unknown> = () => ({ ok: true })) {
+/** The request handler: every route, with `ask` for the ones that need the assistant (each one logged). */
+export function routes(unlogged: Ask, ping: () => Record<string, unknown> = () => ({ ok: true })) {
+  const ask = logged(unlogged)
   return async (req: Request): Promise<Response> => {
     const { pathname } = new URL(req.url)
     if (req.method === 'GET' && pathname === '/api/ping') return json(ping())
@@ -141,6 +143,7 @@ export function routes(ask: Ask, ping: () => Record<string, unknown> = () => ({ 
     if (pathname === '/api/admin/displays') return handleRegistry(req, pathname)
     if (pathname === '/api/pair' || pathname === '/api/admin/pair') return handlePair(req, pathname)
     if (pathname === '/api/admin/memory') return handleMemory(req)
+    if (pathname === '/api/admin/history') return handleHistory(req)
     if (req.method === 'POST' && pathname === '/local/announce') return handleAnnounce(req, ask)
     if (req.method === 'POST' && pathname === '/api/admin/remember') {
       return adminValid(req.headers.get('x-admin-token')) ? handleRemember(req, ask) : json({ error: 'admin mode needed' }, 403)
@@ -162,5 +165,6 @@ export function serve(ask: Ask, o: { port: number; idleTimeout: number; ping?: (
   } catch (err) {
     log(`could not listen on :${o.port}: ${err}`)
   }
-  startSchedule(job => runJob(ask, job))
+  const asked = logged(ask)
+  startSchedule(job => runJob(asked, job))
 }

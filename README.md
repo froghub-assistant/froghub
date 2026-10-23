@@ -183,7 +183,12 @@ only ever keeps the last six exchanges of a conversation, which the display star
 `<site>/admin` (`admin/index.html`, `src/admin/`), behind the PIN: every Frog Hub that has ever checked
 in (`channel/registry.ts`, `~/.config/froghub/displays.json`) with edit / show the welcome / wipe (erases its
 localStorage and starts it again as a new display) / forget, plus announcements, alarms, what the assistant can use,
-its memory files and the wake word recordings. Displays pick up queued changes on their next poll (5 s).
+its memory files, the history and the wake word recordings. Displays pick up queued changes on their next poll (5 s).
+
+**📜 History** lists everything the assistant was asked and what it answered, newest first: questions at the displays
+(which one, who, and what it did or showed), the admin page's memory requests, announcements and scheduled jobs, and
+any that got no answer in time. Both brains log the same way (`channel/history.ts`), to
+`~/.config/froghub/history.jsonl` (owner-only, the newest 1,000 kept); it can be searched and cleared there.
 
 `android-admin/` wraps it as a phone app (`party.froghub.admin`, asks for the site on first start, minSdk 22 = Android 5.1, with the same Let's Encrypt check as the tablet app). Build it like the tablet app (`android-admin/build.sh`).
 

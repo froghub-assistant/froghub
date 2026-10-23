@@ -8,6 +8,7 @@
   import Alarms from './Alarms.svelte'
   import Assistant from './Assistant.svelte'
   import Memory from './Memory.svelte'
+  import History from './History.svelte'
   import Voices from './Voices.svelte'
   import Pair from './Pair.svelte'
 
@@ -17,6 +18,7 @@
     ['alarms', '⏰', 'Alarms', Alarms],
     ['assistant', '🛡️', 'Assistant', Assistant],
     ['memory', '🧠', 'Memory', Memory],
+    ['history', '📜', 'History', History],
     ['voices', '🎙️', 'Voices', Voices],
   ]
   // A display's pairing QR code opens #pair=<code>: show it on the Displays tab
