@@ -11,6 +11,24 @@
   let find = $state('')
   let error = $state('')
   let clearing = $state(false) // asked once; the second press clears
+  let logging = $state(null) // the history policy switch
+
+  async function loadSwitch() {
+    try {
+      logging = (await (await fetch('/api/policy')).json()).history
+    } catch {
+      // the log still shows
+    }
+  }
+
+  async function setLogging(on) {
+    error = ''
+    try {
+      logging = (await api('/api/policy', { history: on })).policy.history
+    } catch (err) {
+      error = err.message
+    }
+  }
 
   async function load(older = false) {
     error = ''
@@ -45,6 +63,7 @@
 
   onMount(() => {
     load()
+    loadSwitch()
     const timer = setInterval(() => !find && items && items.length <= 50 && load(), 15000)
     return () => clearInterval(timer)
   })
@@ -55,12 +74,16 @@
     <h2>📜 Questions and answers</h2>
     <button class="ghost" onclick={() => load()}>Refresh</button>
   </div>
+  {#if logging !== null}
+    <label class="check"><input type="checkbox" checked={logging} onchange={(e) => setLogging(e.currentTarget.checked)} /> Keep a log of questions and answers</label>
+    {#if !logging}<p class="muted small">Off: nothing new is logged{items?.length ? ', and what is here stays until it is cleared' : ''}.</p>{/if}
+  {/if}
   <input type="search" bind:value={find} placeholder="Find…" />
   {#if error}<p class="error">{error}</p>{/if}
   {#if !items}
     <p class="muted">Loading…</p>
   {:else if !shown.length}
-    <p class="muted">{find ? 'Nothing matches.' : 'Nothing asked yet.'}</p>
+    <p class="muted">{find ? 'Nothing matches.' : logging ? 'Nothing asked yet.' : 'Nothing logged.'}</p>
   {:else}
     <ul class="log">
       {#each shown as e (e.at + e.text)}

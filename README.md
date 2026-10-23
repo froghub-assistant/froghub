@@ -188,7 +188,8 @@ its memory files, the history and the wake word recordings. Displays pick up que
 **📜 History** lists everything the assistant was asked and what it answered, newest first: questions at the displays
 (which one, who, and what it did or showed), the admin page's memory requests, announcements and scheduled jobs, and
 any that got no answer in time. Both brains log the same way (`channel/history.ts`), to
-`~/.config/froghub/history.jsonl` (owner-only, the newest 1,000 kept); it can be searched and cleared there.
+`~/.config/froghub/history.jsonl` (owner-only, the newest 1,000 kept); it can be searched and cleared there. It's
+**off by default**: switch it on on that tab (or the Assistant tab). Switching it off keeps what's there until cleared.
 
 `android-admin/` wraps it as a phone app (`party.froghub.admin`, asks for the site on first start, minSdk 22 = Android 5.1, with the same Let's Encrypt check as the tablet app). Build it like the tablet app (`android-admin/build.sh`).
 

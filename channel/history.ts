@@ -1,7 +1,8 @@
 /**
  * A log of everything the assistant was asked and what it answered, for the admin page: questions at the displays,
  * the admin page's memory requests, announcements and scheduled jobs. One JSON line each in
- * ~/.config/froghub/history.jsonl (only the owner can read it), the newest 1,000 kept.
+ * ~/.config/froghub/history.jsonl (only the owner can read it), the newest 1,000 kept. Off until a grown-up turns
+ * it on (the history policy switch); turning it off keeps what's there until it's cleared.
  *
  *   GET  /api/admin/history?before=<at>&limit=<n>   { items: newest first, more }   admin only
  *   POST /api/admin/history {clear: true}           forget it all                   admin only
@@ -10,6 +11,7 @@ import { appendFileSync, chmodSync, existsSync, readFileSync, writeFileSync } fr
 import { homedir } from 'os'
 import { join } from 'path'
 import { adminValid, json, log } from './common.ts'
+import { policy } from './store.ts'
 import type { Ask } from './app.ts'
 
 export const HISTORY_FILE = join(homedir(), '.config', 'froghub', 'history.jsonl')
@@ -41,6 +43,7 @@ const read = (): Entry[] =>
   }) : []
 
 function add(entry: Entry): void {
+  if (!policy().history) return
   try {
     const fresh = !existsSync(HISTORY_FILE)
     appendFileSync(HISTORY_FILE, JSON.stringify(entry) + '\n')

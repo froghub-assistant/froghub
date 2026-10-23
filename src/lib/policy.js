@@ -9,4 +9,5 @@ export const POLICY = [
   ['name', "Know who it's talking to"],
   ['screen', 'Show cards and pictures on the screen'],
   ['announce', 'Pass messages on to the other Frog Hubs'],
+  ['history', 'Keep a log of questions and answers (History tab)'],
 ]

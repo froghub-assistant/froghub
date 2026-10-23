@@ -1,20 +1,35 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { readFileSync, rmSync, statSync, writeFileSync } from 'fs'
+import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs'
+import { join } from 'path'
 import { type Ask, routes, runJob } from '../../channel/app.ts'
 import { HISTORY_FILE, handleHistory, logged } from '../../channel/history.ts'
-import { asAdmin, read, request } from '../helpers.ts'
+import { asAdmin, CONFIG, read, request } from '../helpers.ts'
 
 let answer: Awaited<ReturnType<Ask>> = null
 const ask: Ask = async () => answer
 const handle = routes(ask)
 const history = async (query = '') => read(handleHistory(request('GET', `/api/admin/history${query}`, undefined, await asAdmin())))
 
+const logging = (on: boolean) => writeFileSync(join(CONFIG, 'policy.json'), JSON.stringify({ history: on }))
+
 beforeEach(() => {
   rmSync(HISTORY_FILE, { force: true })
+  logging(true)
   answer = { text: 'Ribbit.', continue_conversation: false, actions: [] }
 })
 
 describe('the log of questions and answers', () => {
+  test("is off until a grown-up turns it on; turning it off keeps what's there", async () => {
+    rmSync(join(CONFIG, 'policy.json'))
+    await logged(ask)('Hi', {})
+    expect(existsSync(HISTORY_FILE)).toBe(false)
+    logging(true)
+    await logged(ask)('Hello', {})
+    logging(false)
+    await logged(ask)('Anyone?', {})
+    expect((await history()).items.map((e: { text: string }) => e.text)).toEqual(['Hello'])
+  })
+
   test('a question at a display: what was said (without the notes for the assistant), where, who, and the answer', async () => {
     await read(handle(request('GET', '/api/announcements?device=lounge1&name=Lounge&after=0')))
     answer = {
