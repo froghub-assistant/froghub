@@ -177,6 +177,8 @@ speed, time and area, so the assistant doesn't do maths in its head.
 `wikipedia` (`channel/wikipedia.ts`) looks things up on Wikipedia, or Simple English Wikipedia for children: the
 summary, the picture (which `show_on_screen` accepts) and other matches, or the article itself with `more`. It's off
 when the grown-ups switch off looking things up online.
+`wikidata` (`channel/wikidata.ts`) gives exact facts from Wikidata (population, area, birthdays, heights, atomic
+numbers, boiling points...), skipping names and disambiguation pages, with the same switch.
 
 ## Thinking harder, and a fresh start
 

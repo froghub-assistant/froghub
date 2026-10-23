@@ -11,6 +11,7 @@
       "mcp__froghub__calculate",
       "mcp__froghub__convert_units",
       "mcp__froghub__wikipedia",
+      "mcp__froghub__wikidata",
       "mcp__froghub__search_history",
       "mcp__froghub__set_alarm",
       "mcp__froghub__set_timer",
