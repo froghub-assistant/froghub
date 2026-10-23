@@ -3,6 +3,7 @@
 // comes from Frog Hub's own assistant (a separate Claude Code session) via /api/ask.
 
 import { startMic } from './mic.js'
+import { forSpeaking } from './speech.js'
 
 export const voice = $state({
   status: 'off', // off | waiting | listening | thinking | speaking | error
@@ -330,10 +331,13 @@ async function respond(text) {
   }
   if (answer.timed_out || !answer.text) return fail('The assistant took too long')
 
-  voice.reply = answer.text
+  // Too long to say: all of it on a card (unless the assistant made its own), and only the start said
+  const { spoken, card } = answer.display || !options.onDisplay ? { spoken: answer.text, card: null } : forSpeaking(answer.text, voice.heard)
+  voice.reply = spoken
   if (answer.actions && answer.actions.length) options.onActions(answer.actions)
   if (answer.display && options.onDisplay) options.onDisplay(answer.display)
-  await speak(answer.text)
+  if (card) options.onDisplay(card)
+  await speak(spoken)
   // Always go back to waiting for the wake word, even after a question, rather than opening the mic straight away.
   if (!stopped) again('wake_word')
 }

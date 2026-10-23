@@ -892,6 +892,7 @@
     font-size: 22px;
     line-height: 1.35;
     margin: 8px 0;
+    white-space: pre-line; /* a long reply's paragraphs */
   }
   .card ol {
     font-size: 22px;
