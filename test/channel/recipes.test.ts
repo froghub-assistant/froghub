@@ -22,7 +22,8 @@ const fetchSpy = spyOn(globalThis, 'fetch').mockImplementation((async (input: Re
   const url = String(input)
   asked.push(url.replace('https://www.themealdb.com/api/json/v1/1/', '').replace('https://recipeapi.io/api/v1/', 'recipeapi:'))
   auth = new Headers(init?.headers).get('authorization')
-  return Response.json(answer(asked.at(-1)!), { status })
+  if (url.startsWith('https://recipeapi.io/') && status === 0) throw new TypeError('fetch failed')
+  return Response.json(answer(asked.at(-1)!), { status: url.startsWith('https://recipeapi.io/') ? status : 200 })
 }) as typeof fetch)
 afterAll(() => fetchSpy.mockRestore())
 beforeEach(() => {
@@ -150,16 +151,59 @@ describe('recipeapi.io, with a key', () => {
     expect(asked).toEqual(['recipeapi:recipes/random?difficulty=easy'])
   })
 
-  test('says when there is nothing, or nothing was asked, or the API says no', async () => {
+  test('says when there is nothing, or nothing was asked', async () => {
     answer = () => page([])
     await expect(findRecipe({ name: 'zzz' })).rejects.toThrow('recipeapi.io has nothing for the name zzz')
     await expect(findRecipe({})).rejects.toThrow('Give a name, id, ingredients')
     await expect(findRecipe({ id: '52802; drop' })).rejects.toThrow("isn't a recipe id")
-    status = 401
-    await expect(findRecipe({ id: '1' })).rejects.toThrow('recipeapi.io turned the key down')
-    status = 429
-    answer = () => ({ error: { code: 'USAGE_LIMIT_EXCEEDED', message: 'Monthly API usage limit exceeded.' } })
-    await expect(findRecipe({ random: true })).rejects.toThrow('recipeapi.io answered 429: Monthly API usage limit exceeded.')
+    status = 404
+    answer = () => ({ error: { code: 'NOT_FOUND', message: 'The requested resource was not found.' } })
+    await expect(findRecipe({ id: '1' })).rejects.toThrow('The requested resource was not found.')
+    status = 422
+    answer = () => ({ error: { code: 'NO_RECIPE_FOUND', message: 'No recipe found matching your filters.' } })
+    await expect(findRecipe({ random: true, diet: 'kosher' })).rejects.toThrow('No recipe found matching your filters.')
+    expect(asked.some(a => !a.startsWith('recipeapi:'))).toBe(false)
+  })
+
+  describe('when it fails, TheMealDB stands in without a word', () => {
+    const errorSpy = spyOn(console, 'error').mockImplementation(() => {})
+    afterAll(() => errorSpy.mockRestore())
+    const mealDb = (path: string) => (path.startsWith('recipeapi:') ? { error: { message: 'Monthly API usage limit exceeded.' } } : { meals: [PIE] })
+
+    test('by name, with its ids marked so a look-up goes back to TheMealDB', async () => {
+      status = 429
+      answer = mealDb
+      const text = await findRecipe({ name: 'fish pie', diet: 'halal' })
+      expect(asked).toEqual(['recipeapi:recipes?search=fish+pie&dietary_tags=halal&per_page=10', 'search.php?s=fish%20pie'])
+      expect(text).toStartWith('Fish pie (id m52802): Seafood, British')
+      expect(text).not.toContain('recipeapi')
+      expect(errorSpy).toHaveBeenLastCalledWith('find_recipe: recipeapi.io answered 429: Monthly API usage limit exceeded.; asking TheMealDB instead')
+      asked.length = 0
+      status = 200
+      expect(await findRecipe({ id: 'm52802' })).toStartWith('Fish pie (id m52802)')
+      expect(asked).toEqual(['lookup.php?i=52802'])
+    })
+
+    test('ingredients, cuisine, meal and diet go as near as they can; random is random', async () => {
+      status = 0 // no answer at all
+      answer = mealDb
+      await findRecipe({ ingredients: 'salmon, rice' })
+      await findRecipe({ cuisine: 'italian' })
+      await findRecipe({ meal_type: 'side dish' })
+      await findRecipe({ diet: 'Vegan', cuisine: 'thai' })
+      await findRecipe({ random: true, cuisine: 'thai' })
+      expect(asked.filter(a => !a.startsWith('recipeapi:'))).toEqual(
+        ['filter.php?i=salmon', 'filter.php?a=Italian', 'filter.php?c=Side', 'filter.php?c=Vegan', 'random.php'])
+    })
+
+    test('a key turned down too; with nothing TheMealDB can search by, it says to try a name', async () => {
+      status = 401
+      answer = mealDb
+      expect(await findRecipe({ name: 'pie' })).toStartWith('Fish pie (id m52802)')
+      // recipeapi.io's ids mean nothing to TheMealDB
+      await expect(findRecipe({ id: '449' })).rejects.toThrow('try a name or an ingredient')
+      await expect(findRecipe({ max_calories: 400 })).rejects.toThrow('try a name or an ingredient')
+    })
   })
 
   test('an empty key file means TheMealDB again', async () => {

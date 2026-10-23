@@ -4,6 +4,8 @@
  * TheMealDB (themealdb.com) by default: by name, or ideas by main ingredient, category or cuisine; it has pictures,
  * so show_on_screen can show one with the ingredients. recipeapi.io instead when there's a key for it (setup asks):
  * 50,000 recipes with filters for cuisine, meal, difficulty, diet, time and calories, and nutrition, but no pictures.
+ * If recipeapi.io fails (down, out of requests, key turned down), it quietly asks TheMealDB instead, as near as it can,
+ * with TheMealDB's ids marked with an m so a look-up goes back there.
  *
  * Environment:
  *   FROGHUB_MEALDB_KEY     TheMealDB API key (default "1", their free key for personal and educational use)
@@ -51,7 +53,7 @@ const mealDbTool = {
 
 type Meal = Record<string, string | null>
 
-async function get(path: string): Promise<Meal[]> {
+async function getMeals(path: string): Promise<Meal[]> {
   const r = await fetch(`${API}/${path}`, { headers: HEADERS, signal: AbortSignal.timeout(8000) })
   if (!r.ok) throw new Error(`TheMealDB answered ${r.status}`)
   const body = await r.json().catch(() => null)
@@ -83,8 +85,10 @@ export async function findRecipe(args: Record<string, unknown>): Promise<string>
   return recipeApiKey() ? findOnRecipeApi(args) : findOnMealDb(args)
 }
 
-async function findOnMealDb(args: Record<string, unknown>): Promise<string> {
-  const word = (k: string) => clean(args[k], 60)
+/** `mark` goes before each id in the answer (m when standing in for recipeapi.io), and is taken off one looked up. */
+async function findOnMealDb(args: Record<string, unknown>, mark = ''): Promise<string> {
+  const word = (k: string) => clean(args[k], 60).replace(/^m(?=\d+$)/, '')
+  const get = async (path: string) => (await getMeals(path)).map(m => (mark ? { ...m, idMeal: mark + m.idMeal } : m))
   if (word('id')) {
     const [meal] = await get(`lookup.php?i=${encodeURIComponent(word('id'))}`)
     if (!meal) throw new Error(`No recipe with id ${word('id')}.`)
@@ -143,17 +147,20 @@ export type Recipe = {
   protein?: number; instructions?: string[]; ingredients?: Ingredient[]
 }
 
+/** recipeapi.io failing (rather than finding nothing), so TheMealDB is asked instead. */
+class RecipeApiError extends Error {}
+
 async function recipeApi(path: string, query: Record<string, string>): Promise<any> {
   const qs = new URLSearchParams(query).toString()
   const r = await fetch(`${RECIPEAPI}/${path}${qs ? `?${qs}` : ''}`, {
     headers: { ...HEADERS, Authorization: `Bearer ${recipeApiKey()}` },
     signal: AbortSignal.timeout(8000),
-  })
+  }).catch(err => { throw new RecipeApiError(`recipeapi.io didn't answer (${(err as Error).message})`) })
   const body = await r.json().catch(() => null)
-  if (r.ok) return body
+  if (r.ok && body?.data) return body
   const said = clean(body?.error?.message, 200)
-  if (r.status === 401) throw new Error('recipeapi.io turned the key down; a grown-up can set a new one with bun run setup.')
-  throw new Error(`recipeapi.io answered ${r.status}${said ? `: ${said}` : ''}`)
+  if (r.status === 404 || body?.error?.code === 'NO_RECIPE_FOUND') throw new Error(said || 'No such recipe.')
+  throw new RecipeApiError(`recipeapi.io answered ${r.status}${said ? `: ${said}` : ''}`)
 }
 
 const words = (s?: string) => (s ?? '').replace(/_/g, ' ')
@@ -185,7 +192,33 @@ const LABELS: Record<string, string> = {
 }
 const lower = (s: string) => s.toLowerCase().replace(/[\s-]+/g, '_')
 
+/** recipeapi.io's arguments as near as TheMealDB's go: the first ingredient, the cuisine, a meal or diet it has. */
+function asMealDb(args: Record<string, unknown>): Record<string, unknown> {
+  if (args.random === true) return { random: true }
+  const word = (k: string) => clean(args[k], 80)
+  const CATEGORIES: Record<string, string> = { dessert: 'Dessert', breakfast: 'Breakfast', starter: 'Starter', side_dish: 'Side', vegetarian: 'Vegetarian', vegan: 'Vegan' }
+  return {
+    name: word('name'),
+    ingredient: word('ingredients').split(',')[0].trim(),
+    category: CATEGORIES[lower(word('diet'))] ?? CATEGORIES[lower(word('meal_type'))],
+    area: word('cuisine').replace(/^./, c => c.toUpperCase()),
+  }
+}
+
 async function findOnRecipeApi(args: Record<string, unknown>): Promise<string> {
+  if (/^m\d+$/.test(clean(args.id, 80))) return findOnMealDb(args, 'm') // from TheMealDB, standing in earlier
+  try {
+    return await askRecipeApi(args)
+  } catch (err) {
+    if (!(err instanceof RecipeApiError)) throw err
+    console.error(`find_recipe: ${err.message}; asking TheMealDB instead`)
+    const instead = asMealDb(args)
+    if (!Object.values(instead).some(Boolean)) throw new Error("Recipes can't be searched like that just now; try a name or an ingredient.")
+    return findOnMealDb(instead, 'm')
+  }
+}
+
+async function askRecipeApi(args: Record<string, unknown>): Promise<string> {
   const word = (k: string) => clean(args[k], 80)
   const number = (k: string) => {
     const n = Number(args[k])
