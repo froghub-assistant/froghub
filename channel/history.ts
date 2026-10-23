@@ -6,13 +6,18 @@
  *
  *   GET  /api/admin/history?before=<at>&limit=<n>   { items: newest first, more }   admin only
  *   POST /api/admin/history {clear: true}           forget it all                   admin only
+ *
+ * The assistant can search it too (search_history), while the log is on, but not what grown-ups asked in admin mode or
+ * from the admin page.
  */
 import { appendFileSync, chmodSync, existsSync, readFileSync, writeFileSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
 import { adminValid, json, log } from './common.ts'
 import { policy } from './store.ts'
+import { houseTime } from './instance.ts'
 import type { Ask } from './app.ts'
+import type { Tool } from './tools.ts'
 
 export const HISTORY_FILE = join(homedir(), '.config', 'froghub', 'history.jsonl')
 const KEEP = 1000
@@ -81,6 +86,40 @@ export function logged(ask: Ask): Ask {
       throw err
     }
   }
+}
+
+export const historyTool: Tool = {
+  name: 'search_history',
+  description:
+    'Search what you were asked before and what you answered (newest first), e.g. "what did I ask you yesterday?", ' +
+    '"what was that recipe?". Only while the grown-ups keep the log on.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      words: { type: 'string', description: 'Words in the question or answer (leave out for everything)' },
+      display: { type: 'string', description: "Only one display's, by name" },
+      days: { type: 'number', description: 'How far back, 1-90 days (default 7)' },
+    },
+  },
+}
+
+/** Runs search_history; returns the text for the assistant. */
+export function searchHistory(args: Record<string, unknown>): string {
+  if (!policy().history) return 'The log is switched off (a grown-up can turn it on in the admin page), so there is no history to search.'
+  const days = Math.min(90, Math.max(1, Number(args.days) || 7))
+  const words = String(args.words ?? '').toLowerCase().split(/\s+/).filter(Boolean)
+  const display = String(args.display ?? '').trim().toLowerCase()
+  const since = Date.now() - days * 86400_000
+  const found = read().filter(e =>
+    e.at >= since && !e.admin && e.kind !== 'admin-page' &&
+    (!display || (e.display ?? '').toLowerCase() === display) &&
+    words.every(w => `${e.text} ${e.answer ?? ''}`.toLowerCase().includes(w))).reverse()
+  if (!found.length) return `Nothing in the last ${days} day${days === 1 ? '' : 's'}${words.length ? ` with "${words.join(' ')}"` : ''}.`
+  const line = (e: Entry) =>
+    `${houseTime(e.at, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` +
+    `${e.display ? `, ${e.display}` : ''}${e.speaker && e.speaker !== 'someone' ? `, ${e.speaker}` : ''}` +
+    `${e.kind !== 'ask' ? ` (${e.kind})` : ''}: "${e.text}" → ${e.answer === null ? '(no answer)' : `"${e.answer}"`}`
+  return `${found.length} found${found.length > 15 ? ', the newest 15' : ''}:\n${found.slice(0, 15).map(line).join('\n')}`
 }
 
 export async function handleHistory(req: Request): Promise<Response> {

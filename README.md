@@ -206,6 +206,8 @@ heard or sent; typed questions, announcements and alarms still work) and a 🔊 
 any that got no answer in time. Both brains log the same way (`channel/history.ts`), to
 `~/.config/froghub/history.jsonl` (owner-only, the newest 1,000 kept); it can be searched and cleared there. It's
 **off by default**: switch it on on that tab (or the Assistant tab). Switching it off keeps what's there until cleared.
+While it's on, the assistant can search it too (`search_history`: words, a display, how many days back), apart from
+what grown-ups asked in admin mode or from the admin page.
 
 `android-admin/` wraps it as a phone app (`party.froghub.admin`, asks for the site on first start, minSdk 22 = Android 5.1, with the same Let's Encrypt check as the tablet app). Build it like the tablet app (`android-admin/build.sh`).
 

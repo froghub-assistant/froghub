@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test } from 'bun:test'
 import { existsSync, readFileSync, rmSync, statSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { type Ask, routes, runJob } from '../../channel/app.ts'
-import { HISTORY_FILE, handleHistory, logged } from '../../channel/history.ts'
+import { HISTORY_FILE, handleHistory, logged, searchHistory } from '../../channel/history.ts'
 import { asAdmin, CONFIG, read, request } from '../helpers.ts'
 
 let answer: Awaited<ReturnType<Ask>> = null
@@ -100,5 +100,26 @@ describe('the log of questions and answers', () => {
     expect((await handleHistory(request('POST', '/api/admin/history', {}, await asAdmin()))).status).toBe(400)
     await read(handleHistory(request('POST', '/api/admin/history', { clear: true }, await asAdmin())))
     expect((await history()).items).toEqual([])
+  })
+
+  test('the assistant can search it, but not what grown-ups asked as admins, and not while the log is off', () => {
+    const now = Date.now()
+    const e = (minsAgo: number, x: object) => JSON.stringify({ at: now - minsAgo * 60000, kind: 'ask', answer: 'ok', ms: 1, ...x })
+    writeFileSync(HISTORY_FILE, [
+      e(60 * 24 * 10, { text: 'Recipe for pancakes?', answer: 'Flour, eggs, milk.' }),
+      e(60, { text: 'Recipe for flapjacks?', answer: 'Oats and syrup.', display: 'Kitchen', speaker: 'Sam' }),
+      e(30, { text: 'Recipe for the secret cake', admin: true }),
+      e(20, { kind: 'admin-page', text: 'Remember the recipe password' }),
+      e(10, { text: 'What is a recipe?', answer: null, display: 'Lounge' }),
+    ].join('\n') + '\n')
+    const found = searchHistory({ words: 'Recipe' }).split('\n')
+    expect(found[0]).toBe('2 found:')
+    expect(found[1]).toEndWith(', Lounge: "What is a recipe?" → (no answer)')
+    expect(found[2]).toEndWith(', Kitchen, Sam: "Recipe for flapjacks?" → "Oats and syrup."')
+    expect(searchHistory({ words: 'pancakes', days: 30 })).toContain('Flour, eggs, milk.')
+    expect(searchHistory({ words: 'recipe', display: 'kitchen' })).toStartWith('1 found:')
+    expect(searchHistory({ words: 'zebra', days: 1 })).toBe('Nothing in the last 1 day with "zebra".')
+    logging(false)
+    expect(searchHistory({})).toStartWith('The log is switched off')
   })
 })
