@@ -12,6 +12,7 @@
   let error = $state('')
   let clearing = $state(false) // asked once; the second press clears
   let logging = $state(null) // the history policy switch
+  let askDelete = $state(false) // just turned off with something logged: delete it too?
 
   async function loadSwitch() {
     try {
@@ -25,6 +26,7 @@
     error = ''
     try {
       logging = (await api('/api/policy', { history: on })).policy.history
+      askDelete = !logging && !!items?.length
     } catch (err) {
       error = err.message
     }
@@ -41,9 +43,10 @@
     }
   }
 
-  async function clear() {
-    if (!clearing) return (clearing = true)
+  async function clear(sure = false) {
+    if (!clearing && !sure) return (clearing = true)
     clearing = false
+    askDelete = false
     try {
       await api('/api/admin/history', { clear: true })
       await load()
@@ -76,7 +79,13 @@
   </div>
   {#if logging !== null}
     <label class="check"><input type="checkbox" checked={logging} onchange={(e) => setLogging(e.currentTarget.checked)} /> Keep a log of questions and answers</label>
-    {#if !logging}<p class="muted small">Off: nothing new is logged{items?.length ? ', and what is here stays until it is cleared' : ''}.</p>{/if}
+    {#if askDelete}
+      <div class="ask">
+        <p>Logging is off. Delete the history too?</p>
+        <button class="danger" onclick={() => clear(true)}>Delete it</button>
+        <button class="ghost" onclick={() => (askDelete = false)}>Keep it</button>
+      </div>
+    {:else if !logging}<p class="muted small">Off: nothing new is logged{items?.length ? ', and what is here stays until it is cleared' : ''}.</p>{/if}
   {/if}
   <input type="search" bind:value={find} placeholder="Find…" />
   {#if error}<p class="error">{error}</p>{/if}
@@ -153,5 +162,16 @@
   }
   .small {
     font-size: 13px;
+  }
+  .ask {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 10px 0;
+  }
+  .ask p {
+    flex-basis: 100%;
+    margin: 0;
   }
 </style>

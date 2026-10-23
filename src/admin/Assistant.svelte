@@ -7,6 +7,7 @@
   let policy = $state(null)
   let note = $state('')
   let error = $state('')
+  let askDelete = $state(false) // the log just turned off with something in it: delete it too?
 
   onMount(async () => {
     try {
@@ -23,6 +24,17 @@
       const r = await api('/api/policy', { [key]: on })
       policy = r.policy
       note = r.restarting ? 'Saved. The assistant is restarting (about 30 seconds).' : 'Saved.'
+      askDelete = key === 'history' && !on && (await api('/api/admin/history?limit=1')).items.length > 0
+    } catch (err) {
+      error = err.message
+    }
+  }
+
+  async function deleteHistory() {
+    askDelete = false
+    try {
+      await api('/api/admin/history', { clear: true })
+      note = 'Saved, and the history is deleted.'
     } catch (err) {
       error = err.message
     }
@@ -42,7 +54,13 @@
   {:else if !error}
     <p class="muted">Loading…</p>
   {/if}
-  {#if note}<p class="ok">{note}</p>{/if}
+  {#if askDelete}
+    <div class="ask">
+      <p>Logging is off. Delete the history too?</p>
+      <button class="danger" onclick={deleteHistory}>Delete it</button>
+      <button class="ghost" onclick={() => (askDelete = false)}>Keep it</button>
+    </div>
+  {:else if note}<p class="ok">{note}</p>{/if}
   {#if error}<p class="error">{error}</p>{/if}
   <p class="muted small">These apply to every Frog Hub. Grown-ups displays are switched on the Displays tab.</p>
 </section>
@@ -53,5 +71,15 @@
   }
   .small {
     font-size: 13px;
+  }
+  .ask {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .ask p {
+    flex-basis: 100%;
+    margin: 0;
   }
 </style>
