@@ -183,6 +183,14 @@ describe('recipeapi.io, with a key', () => {
     expect(asked.at(-1)).toBe('filter.php?c=Vegan')
   })
 
+  test('the assistant can ask for one of them in particular, with no standing in', async () => {
+    answer = path => (path.startsWith('recipeapi:') ? page([]) : { meals: [PIE] })
+    expect(await findRecipe({ name: 'fish pie', source: 'themealdb' })).toStartWith('Fish pie (id m52802)')
+    expect(asked).toEqual(['search.php?s=fish%20pie'])
+    await expect(findRecipe({ name: 'fish pie', source: 'recipeapi.io' })).rejects.toThrow('No recipes for the name fish pie')
+    expect(asked).toEqual(['search.php?s=fish%20pie', 'recipeapi:recipes?search=fish+pie&per_page=10'])
+  })
+
   test('a grown-up can switch it off: TheMealDB, even in recipeapi.io terms', async () => {
     writeFileSync(join(CONFIG, 'policy.json'), JSON.stringify({ recipeApi: false }))
     try {

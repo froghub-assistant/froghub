@@ -131,7 +131,8 @@ const recipeApiTool = {
     'Recipes from recipeapi.io (metric). Give name to look one up ("shepherd\'s pie"); or any of ingredients, cuisine, ' +
     'meal_type, difficulty, diet, max_prep_minutes and max_calories for a list of ideas (with name too, to narrow it), ' +
     'then look one up by its id; or random (the same filters apply) for a surprise. There are no pictures: show the ' +
-    'ingredients or steps with show_on_screen as items while you read out the gist.',
+    'ingredients or steps with show_on_screen as items while you read out the gist. If it finds nothing it tries ' +
+    'TheMealDB; source picks one of them only (themealdb for a picture, or a dish recipeapi.io lacks).',
   inputSchema: {
     type: 'object',
     properties: {
@@ -145,6 +146,7 @@ const recipeApiTool = {
       max_prep_minutes: { type: 'number', description: 'At most this much preparation time' },
       max_calories: { type: 'number', description: 'At most this many calories a serving' },
       random: { type: 'boolean', description: 'A random recipe' },
+      source: { type: 'string', enum: ['recipeapi.io', 'themealdb'], description: 'Only this one (usually leave it out: both, recipeapi.io first)' },
     },
   },
 }
@@ -238,6 +240,9 @@ async function onMealDbInstead(args: Record<string, unknown>, mark: string): Pro
 
 async function findOnRecipeApi(args: Record<string, unknown>): Promise<string> {
   if (/^m\d+$/.test(clean(args.id, 80))) return findOnMealDb(args, 'm') // from TheMealDB, standing in earlier
+  // The assistant asking for one of them in particular: that one only
+  if (args.source === 'themealdb') return onMealDbInstead(args, 'm')
+  if (args.source === 'recipeapi.io') return askRecipeApi(args)
   try {
     return await askRecipeApi(args)
   } catch (err) {
