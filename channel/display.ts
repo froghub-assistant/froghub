@@ -18,9 +18,9 @@ export const displayTool = {
     properties: {
       request_id: { type: 'string' },
       title: { type: 'string', description: 'Up to 60 characters' },
-      text: { type: 'string', description: 'Up to 400 characters, plain text' },
+      text: { type: 'string', description: 'Up to 1500 characters, plain text' },
       emoji: { type: 'string', description: 'One big emoji' },
-      items: { type: 'array', items: { type: 'string' }, description: 'Up to 8 short lines (steps, a list, spellings)' },
+      items: { type: 'array', items: { type: 'string' }, description: 'Up to 30 lines of up to 300 characters (steps, a list, spellings); a whole recipe method fits' },
       picture_of: { type: 'string', description: 'English Wikipedia article whose main picture to show, e.g. "Red panda", "Eiffel Tower"' },
       image_url: { type: 'string', description: 'Or an exact https://upload.wikimedia.org/… image URL, or the picture find_recipe gave' },
       seconds: { type: 'number', description: 'How long to show it, 5-300 (default 30)' },
@@ -45,9 +45,9 @@ async function wikipediaPicture(title: string): Promise<string | null> {
 export async function cleanDisplay(a: Record<string, unknown>): Promise<Display> {
   const d: Display = { seconds: Math.max(5, Math.min(300, Math.round(Number(a.seconds) || 30))) }
   if (text(a.title, 60)) d.title = text(a.title, 60)
-  if (text(a.text, 400)) d.text = text(a.text, 400)
+  if (text(a.text, 1500)) d.text = text(a.text, 1500)
   if (text(a.emoji, 8)) d.emoji = text(a.emoji, 8)
-  if (Array.isArray(a.items)) d.items = a.items.map(i => text(i, 80)).filter(Boolean).slice(0, 8)
+  if (Array.isArray(a.items)) d.items = a.items.map(i => text(i, 300)).filter(Boolean).slice(0, 30)
   if (text(a.picture_of, 100)) {
     const found = await wikipediaPicture(text(a.picture_of, 100))
     if (!found) throw new Error(`Wikipedia has no picture for "${text(a.picture_of, 100)}"; try another title, or show it without a picture.`)

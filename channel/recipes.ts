@@ -24,7 +24,6 @@ const API = `https://www.themealdb.com/api/json/v1/${encodeURIComponent(KEY)}`
 const RECIPEAPI = 'https://recipeapi.io/api/v1'
 export const RECIPEAPI_KEY_FILE = join(homedir(), '.config', 'froghub', 'recipeapi.key')
 const MAX_LIST = 12
-const MAX_METHOD = 2500
 const HEADERS = { 'User-Agent': 'FrogHub/0.1 (home display)' }
 
 /** The recipeapi.io key, if there is one (read each time, so setup can change it without a restart). */
@@ -78,7 +77,7 @@ export function describeMeal(m: Meal): string {
     `${m.strMeal} (id ${m.idMeal}): ${[m.strCategory, m.strArea].filter(Boolean).join(', ')}`,
     m.strMealThumb ? `Picture: ${m.strMealThumb}` : '',
     `Ingredients: ${ingredients.join('; ')}`,
-    `Method: ${method.length > MAX_METHOD ? `${method.slice(0, MAX_METHOD)}…` : method}`,
+    `Method: ${method}`,
   ].filter(Boolean).join('\n')
 }
 
@@ -195,7 +194,7 @@ export function describeRecipe(r: Recipe): string {
     `${r.name} (id ${r.id}): ${facts.join('; ')}`,
     r.description?.trim() ?? '',
     `Ingredients: ${ingredients.join('; ')}`,
-    `Method:\n${method.length > MAX_METHOD ? `${method.slice(0, MAX_METHOD)}…` : method}`,
+    `Method:\n${method}`,
   ].filter(Boolean).join('\n')
 }
 

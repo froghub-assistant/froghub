@@ -279,9 +279,16 @@
   let card = $state(null)
   let cardTimer = null
   function showCard(display) {
-    clearTimeout(cardTimer)
+    cardFull = false
     card = display
-    cardTimer = setTimeout(() => (card = null), display.seconds * 1000)
+    keepCard()
+  }
+
+  // The card goes after its time, counted again from each scroll; full screen, it stays until closed.
+  let cardFull = $state(false)
+  function keepCard() {
+    clearTimeout(cardTimer)
+    if (card && !cardFull) cardTimer = setTimeout(() => (card = null), card.seconds * 1000)
   }
 
   // Something the server wants said (announce.js). At night it's only shown, quietly, unless it says at_night.
@@ -467,8 +474,11 @@
 
   <section class="info">
     {#if card}
-      <div class="card">
-        <button class="card-close" onclick={() => (card = null)} aria-label="Close">✕</button>
+      <div class="card" class:full={cardFull} onscroll={keepCard}>
+        <div class="card-buttons">
+          <button onclick={() => ((cardFull = !cardFull), keepCard())} aria-label={cardFull ? 'Smaller' : 'Full screen'}>{cardFull ? '🗗' : '⛶'}</button>
+          <button onclick={() => (card = null)} aria-label="Close">✕</button>
+        </div>
         {#if card.emoji}<div class="card-emoji">{card.emoji}</div>{/if}
         {#if card.title}<h2>{card.title}</h2>{/if}
         {#if card.image}<img src={card.image} alt={card.title || ''} />{/if}
@@ -645,6 +655,7 @@
     justify-content: center;
     gap: 14px;
     min-width: 0;
+    min-height: 0; /* so a long card scrolls rather than growing past the screen */
   }
   .clock {
     font-size: 108px;
@@ -820,16 +831,43 @@
   }
   .card {
     position: relative;
+    flex: 0 1 auto;
+    min-height: 0;
     max-height: 100%;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding: 20px 24px;
     border-radius: 24px;
     background: rgba(255, 255, 255, 0.08);
   }
-  .card-close {
-    position: absolute;
-    top: 10px;
-    right: 12px;
+  .card.full {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 15;
+    max-height: none;
+    padding: 28px 40px;
+    border-radius: 0;
+    background: var(--bg);
+  }
+  .card.full img {
+    max-height: 50vh;
+  }
+
+  /* Stay at the top while a long card scrolls */
+  .card-buttons {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    float: right;
+    margin: -8px -12px 0 8px;
+    border-radius: 999px;
+    background: var(--bg2);
+  }
+  .card-buttons button {
     border: 0;
     background: none;
     color: var(--muted);
@@ -841,7 +879,7 @@
   }
   .card h2 {
     font-size: 34px;
-    margin: 8px 40px 8px 0;
+    margin: 8px 0;
   }
   .card img {
     display: block;

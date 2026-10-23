@@ -25,9 +25,10 @@ describe('show_on_screen cards', () => {
     expect(d).toEqual({ title: 'T'.repeat(60), text: 'one two three', emoji: '🐸', seconds: 30 })
   })
 
-  test('up to 8 list items, without empty ones', async () => {
-    const d = await cleanDisplay({ items: ['a', '', 7, 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'] })
-    expect(d.items).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])
+  test('up to 30 list items of up to 300 characters, without empty ones', async () => {
+    const many = Array.from({ length: 40 }, (_, i) => `step ${i + 1}`)
+    const d = await cleanDisplay({ items: ['a', '', 7, 'x'.repeat(400), ...many] })
+    expect(d.items).toEqual(['a', 'x'.repeat(300), ...many.slice(0, 28)])
   })
 
   test('an empty card is refused', async () => {
