@@ -10,4 +10,5 @@ export const POLICY = [
   ['screen', 'Show cards and pictures on the screen'],
   ['announce', 'Pass messages on to the other Frog Hubs'],
   ['history', 'Keep a log of questions and answers (History tab)'],
+  ['recipeApi', 'Find recipes on recipeapi.io, if setup was given a key (else TheMealDB)'],
 ]

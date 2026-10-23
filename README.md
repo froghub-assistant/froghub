@@ -161,8 +161,10 @@ With a [recipeapi.io](https://recipeapi.io) key, which setup asks for, it uses t
 metric, searchable by name or by what's in the fridge, and filtered by cuisine, meal, difficulty, diet (vegetarian,
 gluten free, halal…), preparation time and calories, with nutrition per serving. It has no pictures, so the assistant
 shows the ingredients or steps instead. The free plan allows 500 requests a month, and each search or look-up is one.
-If recipeapi.io fails (down, out of requests, or the key turned down), it quietly asks TheMealDB instead, as near as it
-can (a name, the first ingredient, the cuisine, or a meal or diet TheMealDB has), and logs why.
+If recipeapi.io fails (down, out of requests, or the key turned down) or finds nothing, it quietly asks TheMealDB
+instead, as near as it can (a name, the first ingredient, the cuisine, or a meal or diet TheMealDB has), and tells the
+assistant which filters TheMealDB couldn't apply (a diet above all) so it checks the recipe. Failures are logged.
+To use TheMealDB while keeping the key, untick "Find recipes on recipeapi.io" on the admin page's Assistant tab.
 The key is kept in `~/.config/froghub/recipeapi.key` (`FROGHUB_RECIPEAPI_KEY` overrides it); "none" in setup goes back
 to TheMealDB.
 

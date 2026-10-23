@@ -4,8 +4,10 @@
  * TheMealDB (themealdb.com) by default: by name, or ideas by main ingredient, category or cuisine; it has pictures,
  * so show_on_screen can show one with the ingredients. recipeapi.io instead when there's a key for it (setup asks):
  * 50,000 recipes with filters for cuisine, meal, difficulty, diet, time and calories, and nutrition, but no pictures.
- * If recipeapi.io fails (down, out of requests, key turned down), it quietly asks TheMealDB instead, as near as it can,
- * with TheMealDB's ids marked with an m so a look-up goes back there.
+ * If recipeapi.io fails (down, out of requests, key turned down) or finds nothing, it quietly asks TheMealDB instead, as
+ * near as it can, and tells the assistant which filters TheMealDB couldn't apply. A grown-up can switch recipeapi.io off
+ * (the recipeApi policy switch) to use TheMealDB even with a key. With a key, TheMealDB's ids are marked with an m, so
+ * a look-up goes back there.
  *
  * Environment:
  *   FROGHUB_MEALDB_KEY     TheMealDB API key (default "1", their free key for personal and educational use)
@@ -15,6 +17,7 @@ import { existsSync, readFileSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
 import { clean } from './common.ts'
+import { policy } from './store.ts'
 
 const KEY = process.env.FROGHUB_MEALDB_KEY || '1'
 const API = `https://www.themealdb.com/api/json/v1/${encodeURIComponent(KEY)}`
@@ -28,8 +31,11 @@ const HEADERS = { 'User-Agent': 'FrogHub/0.1 (home display)' }
 export const recipeApiKey = () =>
   process.env.FROGHUB_RECIPEAPI_KEY || (existsSync(RECIPEAPI_KEY_FILE) ? readFileSync(RECIPEAPI_KEY_FILE, 'utf8').trim() : '')
 
-/** find_recipe as the assistant sees it: recipeapi.io's when there's a key, else TheMealDB's. */
-export const recipeTool = () => (recipeApiKey() ? recipeApiTool : mealDbTool)
+/** recipeapi.io, unless there's no key or a grown-up has switched it off. */
+export const usingRecipeApi = () => !!recipeApiKey() && policy().recipeApi
+
+/** find_recipe as the assistant sees it (when it starts): recipeapi.io's or TheMealDB's. */
+export const recipeTool = () => (usingRecipeApi() ? recipeApiTool : mealDbTool)
 
 const mealDbTool = {
   name: 'find_recipe',
@@ -82,7 +88,10 @@ const listing = (meals: Meal[], what: string) =>
 
 /** Runs find_recipe; returns the text for the assistant (throws when there's nothing to say). */
 export async function findRecipe(args: Record<string, unknown>): Promise<string> {
-  return recipeApiKey() ? findOnRecipeApi(args) : findOnMealDb(args)
+  if (usingRecipeApi()) return findOnRecipeApi(args)
+  // Switched off since the assistant started, so it may still ask in recipeapi.io's terms
+  const mark = recipeApiKey() ? 'm' : ''
+  return RECIPEAPI_ONLY.some(k => args[k] !== undefined && args[k] !== '') ? onMealDbInstead(args, mark) : findOnMealDb(args, mark)
 }
 
 /** `mark` goes before each id in the answer (m when standing in for recipeapi.io), and is taken off one looked up. */
@@ -147,8 +156,9 @@ export type Recipe = {
   protein?: number; instructions?: string[]; ingredients?: Ingredient[]
 }
 
-/** recipeapi.io failing (rather than finding nothing), so TheMealDB is asked instead. */
+/** recipeapi.io failing, or finding nothing; either way TheMealDB is asked instead. */
 class RecipeApiError extends Error {}
+class NothingFound extends Error {}
 
 async function recipeApi(path: string, query: Record<string, string>): Promise<any> {
   const qs = new URLSearchParams(query).toString()
@@ -159,7 +169,8 @@ async function recipeApi(path: string, query: Record<string, string>): Promise<a
   const body = await r.json().catch(() => null)
   if (r.ok && body?.data) return body
   const said = clean(body?.error?.message, 200)
-  if (r.status === 404 || body?.error?.code === 'NO_RECIPE_FOUND') throw new Error(said || 'No such recipe.')
+  if (body?.error?.code === 'NO_RECIPE_FOUND') throw new NothingFound('No recipe fits all that; try fewer or simpler filters.')
+  if (r.status === 404) throw new Error(said || 'No such recipe.')
   throw new RecipeApiError(`recipeapi.io answered ${r.status}${said ? `: ${said}` : ''}`)
 }
 
@@ -192,17 +203,37 @@ const LABELS: Record<string, string> = {
 }
 const lower = (s: string) => s.toLowerCase().replace(/[\s-]+/g, '_')
 
-/** recipeapi.io's arguments as near as TheMealDB's go: the first ingredient, the cuisine, a meal or diet it has. */
-function asMealDb(args: Record<string, unknown>): Record<string, unknown> {
-  if (args.random === true) return { random: true }
+const RECIPEAPI_ONLY = ['ingredients', 'cuisine', 'meal_type', 'difficulty', 'diet', 'max_prep_minutes', 'max_calories']
+const MEALS: Record<string, string> = { dessert: 'Dessert', breakfast: 'Breakfast', starter: 'Starter', side_dish: 'Side' }
+const DIETS: Record<string, string> = { vegetarian: 'Vegetarian', vegan: 'Vegan' }
+
+/** Asks TheMealDB in recipeapi.io's terms. It searches by one thing (a name, an ingredient, a category or a cuisine), so
+ * the assistant is told which of the rest it couldn't apply, a diet above all. Throws if there's nothing to go on. */
+async function onMealDbInstead(args: Record<string, unknown>, mark: string): Promise<string> {
   const word = (k: string) => clean(args[k], 80)
-  const CATEGORIES: Record<string, string> = { dessert: 'Dessert', breakfast: 'Breakfast', starter: 'Starter', side_dish: 'Side', vegetarian: 'Vegetarian', vegan: 'Vegan' }
-  return {
-    name: word('name'),
-    ingredient: word('ingredients').split(',')[0].trim(),
-    category: CATEGORIES[lower(word('diet'))] ?? CATEGORIES[lower(word('meal_type'))],
-    area: word('cuisine').replace(/^./, c => c.toUpperCase()),
-  }
+  const ingredients = word('ingredients').split(',').map(s => s.trim()).filter(Boolean)
+  const diet = DIETS[lower(word('diet'))]
+  const meal = MEALS[lower(word('meal_type'))]
+  const area = word('cuisine').replace(/^./, c => c.toUpperCase())
+  const query: Record<string, unknown> = args.random === true ? { random: true }
+    : word('name') ? { name: word('name') }
+    : ingredients.length ? { ingredient: ingredients[0] }
+    : diet || meal ? { category: diet || meal }
+    : area ? { area }
+    : {}
+  if (!Object.keys(query).length) throw new Error("Recipes can't be searched like that just now; try a name or an ingredient.")
+  const unchecked = [
+    !query.name && word('name') && `the name "${word('name')}"`,
+    ...ingredients.filter(i => i !== query.ingredient).map(i => `the ingredient ${i}`),
+    word('diet') && (!diet || query.category !== diet) && `the diet (${word('diet')})`,
+    word('meal_type') && (!meal || query.category !== meal) && `the meal (${word('meal_type')})`,
+    area && query.area !== area && `the cuisine (${area})`,
+    word('difficulty') && `the difficulty (${word('difficulty')})`,
+    args.max_prep_minutes !== undefined && `the prep time (${args.max_prep_minutes} min)`,
+    args.max_calories !== undefined && `the calories (${args.max_calories} kcal)`,
+  ].filter(Boolean)
+  const text = await findOnMealDb(query, mark)
+  return unchecked.length ? `${text}\n\n(Not checked for ${unchecked.join(', ')}: make sure a recipe fits before suggesting it.)` : text
 }
 
 async function findOnRecipeApi(args: Record<string, unknown>): Promise<string> {
@@ -210,11 +241,13 @@ async function findOnRecipeApi(args: Record<string, unknown>): Promise<string> {
   try {
     return await askRecipeApi(args)
   } catch (err) {
-    if (!(err instanceof RecipeApiError)) throw err
-    console.error(`find_recipe: ${err.message}; asking TheMealDB instead`)
-    const instead = asMealDb(args)
-    if (!Object.values(instead).some(Boolean)) throw new Error("Recipes can't be searched like that just now; try a name or an ingredient.")
-    return findOnMealDb(instead, 'm')
+    if (err instanceof RecipeApiError) {
+      console.error(`find_recipe: ${err.message}; asking TheMealDB instead`)
+      return onMealDbInstead(args, 'm')
+    }
+    if (!(err instanceof NothingFound)) throw err
+    // recipeapi.io has nothing like it: perhaps TheMealDB has
+    return await onMealDbInstead(args, 'm').catch(() => { throw new Error(err.message) })
   }
 }
 
@@ -244,7 +277,7 @@ async function askRecipeApi(args: Record<string, unknown>): Promise<string> {
   const found: Recipe[] = Array.isArray(body?.data) ? body.data : []
   const total: number = body?.meta?.total ?? found.length
   const asked = Object.entries(filters).map(([k, v]) => `${LABELS[k]} ${v}`).join(', ')
-  if (!found.length) throw new Error(`recipeapi.io has nothing for ${asked}; try fewer or simpler filters.`)
+  if (!found.length) throw new NothingFound(`No recipes for ${asked}; try fewer or simpler filters.`)
   const line = (r: Recipe) => `${r.id}: ${r.name}${r.prep_time || r.cook_time ? ` (${(r.prep_time ?? 0) + (r.cook_time ?? 0)} min)` : ''}`
   if (word('name')) {
     const others = found.slice(1).map(line).join('; ')

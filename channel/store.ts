@@ -35,6 +35,7 @@ export const POLICY_DEFAULTS = {
   screen: true, // show cards and pictures on the display
   announce: true, // pass messages on to the other displays
   history: false, // keep a log of questions and answers for the admin page
+  recipeApi: true, // find recipes on recipeapi.io when setup was given a key (else TheMealDB)
 }
 export type Policy = typeof POLICY_DEFAULTS
 

@@ -1,8 +1,10 @@
 import { afterAll, afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test'
 import { rmSync, writeFileSync } from 'fs'
+import { join } from 'path'
 import { cleanDisplay } from '../../channel/display.ts'
 import { describeMeal, describeRecipe, findRecipe, RECIPEAPI_KEY_FILE, type Recipe, recipeTool } from '../../channel/recipes.ts'
 import { tools } from '../../channel/tools.ts'
+import { CONFIG } from '../helpers.ts'
 
 // TheMealDB, cut down to what find_recipe reads
 const PIE = {
@@ -151,18 +153,48 @@ describe('recipeapi.io, with a key', () => {
     expect(asked).toEqual(['recipeapi:recipes/random?difficulty=easy'])
   })
 
-  test('says when there is nothing, or nothing was asked', async () => {
-    answer = () => page([])
-    await expect(findRecipe({ name: 'zzz' })).rejects.toThrow('recipeapi.io has nothing for the name zzz')
+  test('says when neither has anything, or nothing was asked', async () => {
+    answer = () => page([]) // (and no meals from TheMealDB)
+    await expect(findRecipe({ name: 'zzz' })).rejects.toThrow('No recipes for the name zzz; try fewer or simpler filters.')
+    expect(asked).toEqual(['recipeapi:recipes?search=zzz&per_page=10', 'search.php?s=zzz'])
+    await expect(findRecipe({ max_calories: 100 })).rejects.toThrow('No recipes for kcal a serving at most 100')
     await expect(findRecipe({})).rejects.toThrow('Give a name, id, ingredients')
     await expect(findRecipe({ id: '52802; drop' })).rejects.toThrow("isn't a recipe id")
     status = 404
     answer = () => ({ error: { code: 'NOT_FOUND', message: 'The requested resource was not found.' } })
+    asked.length = 0
     await expect(findRecipe({ id: '1' })).rejects.toThrow('The requested resource was not found.')
+    expect(asked).toEqual(['recipeapi:recipes/1']) // its ids mean nothing to TheMealDB
+  })
+
+  test("when it has nothing, TheMealDB is asked, and says which filters it couldn't apply", async () => {
+    answer = path => (path.startsWith('recipeapi:') ? page([]) : { meals: [PIE] })
+    const text = await findRecipe({ name: 'fish pie', ingredients: 'cod, prawns', diet: 'gluten free', max_prep_minutes: 20 })
+    expect(asked.at(-1)).toBe('search.php?s=fish%20pie')
+    expect(text).toStartWith('Fish pie (id m52802)')
+    expect(text).toEndWith('(Not checked for the ingredient cod, the ingredient prawns, the diet (gluten free), the prep time (20 min): make sure a recipe fits before suggesting it.)')
     status = 422
-    answer = () => ({ error: { code: 'NO_RECIPE_FOUND', message: 'No recipe found matching your filters.' } })
-    await expect(findRecipe({ random: true, diet: 'kosher' })).rejects.toThrow('No recipe found matching your filters.')
-    expect(asked.some(a => !a.startsWith('recipeapi:'))).toBe(false)
+    answer = path => (path.startsWith('recipeapi:') ? { error: { code: 'NO_RECIPE_FOUND', message: 'No recipe found matching your filters.' } } : { meals: [PIE] })
+    expect(await findRecipe({ random: true, diet: 'vegan' })).toEndWith('(Not checked for the diet (vegan): make sure a recipe fits before suggesting it.)')
+    expect(asked.at(-1)).toBe('random.php')
+    status = 200
+    answer = path => (path.startsWith('recipeapi:') ? page([]) : { meals: LIST.slice(0, 2) })
+    expect(await findRecipe({ diet: 'vegan', meal_type: 'dessert', cuisine: 'thai' })).toEndWith('(Not checked for the meal (dessert), the cuisine (Thai): make sure a recipe fits before suggesting it.)')
+    expect(asked.at(-1)).toBe('filter.php?c=Vegan')
+  })
+
+  test('a grown-up can switch it off: TheMealDB, even in recipeapi.io terms', async () => {
+    writeFileSync(join(CONFIG, 'policy.json'), JSON.stringify({ recipeApi: false }))
+    try {
+      expect(recipeTool().description).toStartWith('Recipes from TheMealDB')
+      answer = () => ({ meals: [PIE] })
+      expect(await findRecipe({ name: 'fish pie' })).toStartWith('Fish pie (id m52802)')
+      expect(await findRecipe({ cuisine: 'british', difficulty: 'easy' })).toContain('(Not checked for the difficulty (easy)')
+      expect(await findRecipe({ id: 'm52802' })).toStartWith('Fish pie')
+      expect(asked).toEqual(['search.php?s=fish%20pie', 'filter.php?a=British', 'lookup.php?i=52802'])
+    } finally {
+      rmSync(join(CONFIG, 'policy.json'))
+    }
   })
 
   describe('when it fails, TheMealDB stands in without a word', () => {
