@@ -9,6 +9,7 @@
   // What Frog Hub's assistant may use. Only shown, and only saved, in admin mode (the server checks the token too).
   let policy = $state(null)
   let policyLoaded = ''
+  // svelte-ignore state_referenced_locally (the panel opens afresh each time)
   if (adminToken) {
     fetch('/api/policy').then((r) => r.json()).then((p) => {
       policy = p
@@ -18,6 +19,7 @@
   // Grown-ups display (no kids' rules): per display, kept on the server, only changed in admin mode.
   let grownUps = $state(null)
   let grownUpsLoaded = null
+  // svelte-ignore state_referenced_locally
   if (adminToken) {
     fetch(`/api/audience?device=${settings.deviceId}`).then((r) => r.json()).then((a) => {
       grownUps = a.grownUps

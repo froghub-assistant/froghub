@@ -4,6 +4,7 @@
   import { api } from './api.svelte.js'
 
   let { code = '' } = $props()
+  // svelte-ignore state_referenced_locally (a starting value to edit)
   let typed = $state(code)
   let busy = $state(false)
   let done = $state('')

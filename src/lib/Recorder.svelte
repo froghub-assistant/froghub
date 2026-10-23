@@ -15,6 +15,7 @@
   const SECONDS = { wake: 2.5, other: 4 }
   const QUIET = 1500 // loudest sample below this = probably nothing said
 
+  // svelte-ignore state_referenced_locally (a starting value to edit)
   let who = $state(name)
   let kind = $state('wake')
   let turn = $state(0)

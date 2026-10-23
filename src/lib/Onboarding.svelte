@@ -16,6 +16,7 @@
   let { onDone, start = 'hello' } = $props()
 
   const STEPS = ['hello', 'connect', 'personality', 'about', 'mic', 'done']
+  // svelte-ignore state_referenced_locally (where it starts)
   let step = $state(STEPS.includes(start) ? start : 'hello') // ?welcome=mic opens at that page, to try it out
   let forward = $state(true) // which way the pages slide
   let at = $derived(STEPS.indexOf(step))
@@ -24,10 +25,11 @@
   houseLoaded.then(() => {
     if (!draft.haUrl) draft.haUrl = house.haUrl // this house's Home Assistant, from the server
   })
+  // svelte-ignore state_referenced_locally (from where it starts)
   let picked = $state(STEPS.indexOf(step) > STEPS.indexOf('personality')) // a personality has been chosen (past its page)
   // Frog Hub is a frog until a personality is picked
   let p = $derived(personality(step === 'personality' || picked ? draft.personality : 'frog'))
-  let adminToken = null
+  let adminToken = $state(null)
   let grownUps = $state(false) // a grown-ups display: no kids' rules (saved on the server at the end, with the PIN)
 
   function go(next) {
@@ -147,7 +149,7 @@
   }
 
   // ── The microphone ──
-  let mic = null
+  let mic = $state.raw(null) // the open microphone (the page switches to "Say hello" while it's on)
   let level = $state(0) // 0..1, smoothed
   let heard = $state(false)
   let micNote = $state('')

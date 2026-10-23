@@ -250,9 +250,11 @@
     margin-top: 16px;
   }
   @supports not (gap: 1px) {
-    .top > * + *,
-    .switch > * + * {
+    .top > * + * {
       margin-left: 10px;
+    }
+    .switch > input {
+      margin-right: 8px;
     }
   }
 </style>
