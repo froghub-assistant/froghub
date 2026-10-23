@@ -12,6 +12,7 @@
   import { alarm, startAlarms, finish as finishAlarm } from './lib/alarms.svelte.js'
   import { voice, startVoice, startTextOnly, stopVoice, setPersonality, tapToTalk, askText, sayUnasked, setMicMuted, setVolume } from './lib/assist.svelte.js'
   import { startAnnouncements, otherDisplays, sendMessage } from './lib/announce.js'
+  import { player, playAudio, stopAudio, setAudioVolume, duck } from './lib/player.svelte.js'
 
   const WEATHER = {
     'clear-night': '🌙', cloudy: '☁️', fog: '🌫️', hail: '🌨️', lightning: '🌩️', 'lightning-rainy': '⛈️',
@@ -59,7 +60,8 @@
   })
   let showVolume = $state(false) // the 🔊 button's slider
 
-  $effect(() => setVolume(settings.volume))
+  $effect(() => (setVolume(settings.volume), setAudioVolume(settings.volume)))
+  $effect(() => duck(busy))
 
   // The 🎙️ button: the microphone off (or on again), kept across restarts
   function toggleMic() {
@@ -294,6 +296,11 @@
   // Something the server wants said (announce.js). At night it's only shown, quietly, unless it says at_night.
   function announced(a) {
     const silent = night && !a.at_night
+    if (a.audio) {
+      if (a.audio.stop) return stopAudio()
+      if (!silent) playAudio(a.audio)
+      if (!a.text) return
+    }
     sayUnasked(a.text, {
       silent,
       show: () => {
@@ -551,6 +558,12 @@
   {#if adminToken}
     <div class="admin">🔓 Admin mode <button onclick={lockAdmin}>Lock</button></div>
   {/if}
+  {#if player.playing || player.error}
+    <div class="playing">
+      {player.playing ? `🎵 ${player.title}` : `⚠️ ${player.error}`}
+      {#if player.playing}<button onclick={stopAudio} aria-label="Stop">⏹</button>{:else}<button onclick={() => (player.error = '')} aria-label="Close">✕</button>{/if}
+    </div>
+  {/if}
 
   {#if showPin}
     <PinPad onUnlock={unlocked} onCancel={() => (showPin = false)} />
@@ -685,6 +698,33 @@
   }
   .status {
     color: var(--muted);
+  }
+  .playing {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    z-index: 14;
+    display: flex;
+    align-items: center;
+    max-width: 60%;
+    padding: 6px 8px 6px 16px;
+    border-radius: 999px;
+    background: var(--bg2);
+    color: var(--fg);
+    font-size: 18px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transform: translateX(-50%);
+  }
+  .playing button {
+    margin-left: 10px;
+    border: 0;
+    border-radius: 999px;
+    padding: 4px 12px;
+    background: var(--accent);
+    color: var(--bg);
+    font-size: 18px;
   }
   .admin {
     position: absolute;

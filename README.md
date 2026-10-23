@@ -180,6 +180,15 @@ when the grown-ups switch off looking things up online.
 `wikidata` (`channel/wikidata.ts`) gives exact facts from Wikidata (population, area, birthdays, heights, atomic
 numbers, boiling points...), skipping names and disambiguation pages, with the same switch.
 
+## Playing audio
+
+`play_audio` and `stop_audio` (`channel/audio.ts`) play a sound, song or radio stream from an https link on the
+display that asked, one display, or all of them; it goes out like an announcement, so a scheduled job can do it too.
+Anything on the server can as well: `POST /local/announce {"audio": "https://…", "title": "…", "to": "Kitchen"}`, and
+`{"stop_audio": true}`. The server checks the link is audio first. The display shows 🎵 and a ⏹ button while it plays,
+uses its volume (turned down while someone talks to it), and stays quiet at night unless `at_night`. Off with the
+music switch.
+
 ## Thinking harder, and a fresh start
 
 The assistant is Haiku, which is quick. For what needs real thought (homework, a careful explanation, planning) it can

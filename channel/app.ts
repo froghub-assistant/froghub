@@ -15,6 +15,7 @@ import { type Display, cleanDisplay } from './display.ts'
 import { handleSamples } from './samples.ts'
 import { type Screen, announce, findDisplay, handleAnnouncements, onlineDisplays, screenFor } from './announce.ts'
 import { type Job, startSchedule } from './schedule.ts'
+import { checkAudioUrl } from './audio.ts'
 
 /** Hands `content` to the assistant (meta: personality, speaker, time, and kind, mode, audience, conversation_id
  * when they apply) and waits for its reply; null if it didn't answer in time. */
@@ -90,6 +91,17 @@ async function handleAnnounce(req: Request, ask: Ask): Promise<Response> {
   const to = target?.id
   const say = clean(body.say, 500)
   const prompt = clean(body.prompt, 1000)
+  if (body.audio !== undefined) {
+    if (!policy().music) return json({ error: 'a grown-up has turned off playing music' }, 403)
+    try {
+      const url = await checkAudioUrl(body.audio)
+      const title = clean(body.title, 80)
+      return json({ ok: true, id: announce({ text: say, audio: { url, ...(title ? { title } : {}) }, area, to, at_night }) })
+    } catch (err) {
+      return json({ error: (err as Error).message }, 400)
+    }
+  }
+  if (body.stop_audio === true) return json({ ok: true, id: announce({ text: '', audio: { stop: true }, area, to, at_night: true }) })
   if (say) {
     let display: Display | undefined
     try {

@@ -7,6 +7,7 @@
  *       { say: "text", show?: {title, text, emoji, items, picture_of, image_url, seconds} }
  *       or { prompt: "what the assistant should tell the room" }: it goes to the assistant like a question and its
  *       reply (with any card or room actions) is announced
+ *       or { audio: "https://…mp3", title? }: played on the displays (audio.ts); { stop_audio: true } stops it
  *       optional: to (a display's name), area (only displays set to that room), at_night (speak during night hours
  *       too; otherwise it's only shown), personality (for a prompt; default the shared one)
  *   - Someone at a display, with the 📢 button: POST /api/announce { text, to?, device, name }
@@ -29,6 +30,7 @@ export type Announcement = {
   area?: string
   to?: string // a display's id: only that one
   from?: string // the sending display's id: never shown there
+  audio?: { url?: string; title?: string; stop?: true } // play_audio and stop_audio (audio.ts)
   at_night: boolean
   at: number
 }
