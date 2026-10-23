@@ -168,6 +168,12 @@ To use TheMealDB while keeping the key, untick "Find recipes on recipeapi.io" on
 The key is kept in `~/.config/froghub/recipeapi.key` (`FROGHUB_RECIPEAPI_KEY` overrides it); "none" in setup goes back
 to TheMealDB.
 
+## Sums and units
+
+`calculate` works sums out exactly (`channel/maths.ts`: + − × ÷, powers, brackets, roots, a few functions; parsed,
+never eval'd), and `convert_units` converts length, weight, volume (British pints and gallons, US cups), temperature,
+speed, time and area, so the assistant doesn't do maths in its head.
+
 ## Thinking harder, and a fresh start
 
 The assistant is Haiku, which is quick. For what needs real thought (homework, a careful explanation, planning) it can
