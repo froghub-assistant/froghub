@@ -89,6 +89,8 @@ export async function handleAnnouncements(req: Request, pathname: string): Promi
         who: clean(url.searchParams.get('who'), 40),
         areaName: clean(url.searchParams.get('areaName'), 60),
         personality: clean(url.searchParams.get('personality'), 20),
+        micMuted: url.searchParams.get('micMuted') === 'true',
+        ...(/^\d{1,3}$/.test(url.searchParams.get('volume') ?? '') ? { volume: Math.min(100, Number(url.searchParams.get('volume'))) } : {}),
       })
       if (command?.wipe) screens.delete(device)
     }

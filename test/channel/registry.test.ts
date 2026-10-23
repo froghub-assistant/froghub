@@ -64,6 +64,20 @@ describe("a grown-up's commands", () => {
     expect(checkIn('cmd2', info())).toEqual({ set: { deviceName: 'Kitchen hub', area: 'living_room', name: 'x'.repeat(60) } })
   })
 
+  test('the microphone and volume can be set, as a switch and a level from 0 to 100', async () => {
+    checkIn('cmd6', info())
+    await act({ id: 'cmd6', action: 'set', set: { micMuted: true, volume: 140.4 } })
+    await act({ id: 'cmd6', action: 'set', set: { micMuted: 'no', volume: '50' } }) // wrong types are ignored
+    expect(checkIn('cmd6', info())).toEqual({ set: { micMuted: true, volume: 100 } })
+    await act({ id: 'cmd6', action: 'set', set: { volume: -3 } })
+    expect(checkIn('cmd6', info())).toEqual({ set: { volume: 0 } })
+  })
+
+  test('the admin page sees whether a display is muted, and its volume', async () => {
+    checkIn('cmd7', { ...info(), micMuted: true, volume: 35 })
+    expect((await list()).find((d: { id: string }) => d.id === 'cmd7')).toMatchObject({ micMuted: true, volume: 35 })
+  })
+
   test('cancel drops what was queued', async () => {
     checkIn('cmd3', info())
     await act({ id: 'cmd3', action: 'wipe' })

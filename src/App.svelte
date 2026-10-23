@@ -10,7 +10,7 @@
   import { settings, saveSettings, pullShared } from './lib/settings.svelte.js'
   import { house } from './lib/house.svelte.js'
   import { alarm, startAlarms, finish as finishAlarm } from './lib/alarms.svelte.js'
-  import { voice, startVoice, startTextOnly, stopVoice, setPersonality, tapToTalk, askText, sayUnasked } from './lib/assist.svelte.js'
+  import { voice, startVoice, startTextOnly, stopVoice, setPersonality, tapToTalk, askText, sayUnasked, setMicMuted, setVolume } from './lib/assist.svelte.js'
   import { startAnnouncements, otherDisplays, sendMessage } from './lib/announce.js'
 
   const WEATHER = {
@@ -53,8 +53,20 @@
     areaName,
     who: settings.name,
     personality: settings.personality,
+    micMuted: settings.micMuted,
+    volume: settings.volume,
     ready: setUp() && !showOnboarding, // the welcome finished
   })
+  let showVolume = $state(false) // the 🔊 button's slider
+
+  $effect(() => setVolume(settings.volume))
+
+  // The 🎙️ button: the microphone off (or on again), kept across restarts
+  function toggleMic() {
+    settings.micMuted = !settings.micMuted
+    saveSettings()
+    setMicMuted(settings.micMuted)
+  }
   // The house's time zone from the server: a tablet's own can be wrong (e.g. stuck on GMT on a debloated Fire).
   let TZ = $derived(house.timeZone)
   let hour = $derived(Number(now.toLocaleTimeString('en-GB', { hour: '2-digit', hour12: false, timeZone: TZ }).slice(0, 2)) % 24)
@@ -149,6 +161,7 @@
   function voiceOptions() {
     return {
       personality: p,
+      muted: settings.micMuted,
       getContext: () => ({
         adminToken,
         device: settings.deviceId,
@@ -371,6 +384,7 @@
       const roomChanged = 'area' in command.set && command.set.area !== settings.area
       Object.assign(settings, command.set)
       saveSettings()
+      if ('micMuted' in command.set) setMicMuted(settings.micMuted)
       if (roomChanged) {
         stopVoice()
         connect()
@@ -434,8 +448,8 @@
     <!-- Without Home Assistant there's no voice: a tap opens the keyboard instead -->
     <button
       class="face-button"
-      onclick={() => (connection === 'none' ? (typing = true) : tapToTalk())}
-      aria-label={connection === 'none' ? `Type to ${p.name}` : voice.status === 'listening' ? 'Stop listening' : 'Talk'}
+      onclick={() => (connection === 'none' || voice.muted ? (typing = true) : tapToTalk())}
+      aria-label={connection === 'none' || voice.muted ? `Type to ${p.name}` : voice.status === 'listening' ? 'Stop listening' : 'Talk'}
     >
       <Face kind={p.face} fill={p.colours.faceFill} ink={p.colours.faceInk} mood={voice.status} {feeling} size={busy ? 260 : 220} />
     </button>
@@ -445,7 +459,8 @@
       {#if voice.reply && voice.status !== 'listening'}<p class="reply">{voice.reply}</p>{/if}
     {:else}
       <p class="greeting">{p.greeting(settings.name)}</p>
-      {#if voice.wakeWord && voice.status === 'waiting'}<p class="hint">Say “{voice.wakeWord}” or tap me to talk</p>{/if}
+      {#if voice.muted && connection !== 'none'}<p class="hint">🔇 The microphone is off. Tap 🎙️ to turn it on, or tap me to type.</p>
+      {:else if voice.wakeWord && voice.status === 'waiting'}<p class="hint">Say “{voice.wakeWord}” or tap me to talk</p>{/if}
       {#if voice.status === 'error'}<p class="hint">{voice.error}</p>{/if}
     {/if}
   </section>
@@ -488,6 +503,16 @@
 
   <button class="keyboard" onclick={() => ((typing = !typing), (messaging = false))} aria-label="Type to {p.name}">⌨️</button>
   <button class="megaphone" onclick={openMessaging} aria-label="Send a message to the other Frog Hubs">📢</button>
+  {#if connection !== 'none'}
+    <button class="mic" class:muted={voice.muted} onclick={toggleMic} aria-label={voice.muted ? 'Turn the microphone on' : 'Turn the microphone off'}>{voice.muted ? '🔇' : '🎙️'}</button>
+  {/if}
+  <button class="speaker" class:low={connection === 'none'} onclick={() => (showVolume = !showVolume)} aria-label="Volume">{settings.volume === 0 ? '🔈' : settings.volume < 50 ? '🔉' : '🔊'}</button>
+  {#if showVolume}
+    <div class="volume" class:low={connection === 'none'}>
+      <input type="range" min="0" max="100" step="5" bind:value={settings.volume} onchange={saveSettings} aria-label="Volume" />
+      <span>{settings.volume}%</span>
+    </div>
+  {/if}
   <button class="gear" onclick={openSettings} aria-label="Settings">⚙️</button>
 
   {#if typing}
@@ -690,6 +715,45 @@
     background: none;
     font-size: 30px;
     opacity: 0.7;
+  }
+  .mic,
+  .speaker {
+    position: absolute;
+    left: 114px;
+    bottom: 10px;
+    border: 0;
+    background: none;
+    font-size: 30px;
+    opacity: 0.7;
+  }
+  .speaker {
+    left: 164px;
+  }
+  .speaker.low {
+    left: 114px;
+  }
+  .mic.muted {
+    opacity: 1;
+  }
+  .volume {
+    position: absolute;
+    left: 110px;
+    bottom: 64px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    border-radius: 16px;
+    background: var(--bg2);
+    color: var(--fg);
+  }
+  .volume.low {
+    left: 60px;
+  }
+  .volume input {
+    width: 220px;
+    margin-right: 12px;
+    accent-color: var(--accent);
   }
   .typebox select {
     max-width: 30%;

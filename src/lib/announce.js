@@ -4,7 +4,8 @@
 
 const POLL_MS = 5000
 
-// Each poll also tells the server this display is on (its id, name, room, who it's for and personality), so others can
+// Each poll also tells the server this display is on (its id, name, room, who it's for, personality, whether its
+// microphone is off and its volume), so others can
 // send to it and the admin page can list it. Anything a grown-up queued for it there comes back to onCommand.
 // A display that hasn't finished the welcome yet (me.ready false) stays quiet: it isn't a Frog Hub until then.
 export function startAnnouncements(getMe, onAnnouncement, onCommand) {
@@ -13,8 +14,8 @@ export function startAnnouncements(getMe, onAnnouncement, onCommand) {
     try {
       const me = getMe()
       if (!me.ready) return
-      const query = ['id', 'name', 'area', 'areaName', 'who', 'personality']
-        .map((k) => `${k === 'id' ? 'device' : k}=${encodeURIComponent(me[k] || '')}`)
+      const query = ['id', 'name', 'area', 'areaName', 'who', 'personality', 'micMuted', 'volume']
+        .map((k) => `${k === 'id' ? 'device' : k}=${encodeURIComponent(me[k] ?? '')}`)
         .join('&')
       const r = await (await fetch(`/api/announcements?after=${after || 0}&${query}`)).json()
       if (r.command && onCommand) onCommand(r.command)

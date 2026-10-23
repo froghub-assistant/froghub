@@ -11,12 +11,13 @@ function getUserMedia(constraints) {
   return new Promise((resolve, reject) => legacy.call(navigator, constraints, resolve, reject))
 }
 
-export async function startMic(onPcm) {
+// `context`: an AudioContext to use (and keep) instead of a new one, so speech can carry on with the microphone off.
+export async function startMic(onPcm, context = null) {
   const stream = await getUserMedia({
     audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
   })
   const Context = window.AudioContext || window.webkitAudioContext
-  const ctx = new Context()
+  const ctx = context || new Context()
   const source = ctx.createMediaStreamSource(stream)
   const processor = ctx.createScriptProcessor(4096, 1, 1)
   const ratio = ctx.sampleRate / TARGET_RATE
@@ -47,11 +48,11 @@ export async function startMic(onPcm) {
 
   return {
     context: ctx,
-    stop() {
+    stop(keepContext = false) {
       processor.disconnect()
       source.disconnect()
       stream.getTracks().forEach((t) => t.stop())
-      ctx.close()
+      if (!keepContext) ctx.close()
     },
   }
 }

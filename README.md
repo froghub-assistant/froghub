@@ -187,6 +187,10 @@ in (`channel/registry.ts`, `~/.config/froghub/displays.json`) with edit / show t
 localStorage and starts it again as a new display) / forget, plus announcements, alarms, what the assistant can use,
 its memory files, the history and the wake word recordings. Displays pick up queued changes on their next poll (5 s).
 
+Each display has a 🎙️ button that switches its microphone off (the browser's microphone is closed, so nothing is
+heard or sent; typed questions, announcements and alarms still work) and a 🔊 volume slider (alarms never go below
+20%). The Displays tab shows both for every display, with a 🔇 Mic off / 🎙️ Mic on button and the volume under ✏️ Edit.
+
 **📜 History** lists everything the assistant was asked and what it answered, newest first: questions at the displays
 (which one, who, and what it did or showed), the admin page's memory requests, announcements and scheduled jobs, and
 any that got no answer in time. Both brains log the same way (`channel/history.ts`), to

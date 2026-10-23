@@ -10,7 +10,7 @@
   let list = $state(null)
   let error = $state('')
   let areas = $state([]) // from Home Assistant, for moving a display to another room
-  let editing = $state(null) // { id, deviceName, name, area, grownUps }
+  let editing = $state(null) // { id, deviceName, name, area, grownUps, volume }
   let arming = $state('') // `${action}:${id}` waiting for a second tap
 
   async function load() {
@@ -44,6 +44,7 @@
     if (editing.deviceName !== (d.name === d.areaName ? '' : d.name)) set.deviceName = editing.deviceName
     if (editing.name !== d.who) set.name = editing.name
     if (editing.area !== d.area) set.area = editing.area
+    if (editing.volume !== (d.volume ?? 100)) set.volume = editing.volume
     const grownUps = editing.grownUps
     editing = null
     try {
@@ -81,8 +82,15 @@
     return () => clearInterval(timer)
   })
 
-  const pendingText = (p) =>
-    [p.wipe && 'wipe', p.welcome && 'show the welcome', p.set && 'new settings'].filter(Boolean).join(', ')
+  const pendingText = (p) => {
+    const { micMuted, volume, ...rest } = p.set || {}
+    return [
+      p.wipe && 'wipe', p.welcome && 'show the welcome',
+      micMuted !== undefined && (micMuted ? 'turn the microphone off' : 'turn the microphone on'),
+      volume !== undefined && `set the volume to ${volume}%`,
+      Object.keys(rest).length && 'new settings',
+    ].filter(Boolean).join(', ')
+  }
 </script>
 
 {#if error}<p class="error">{error}</p>{/if}
@@ -106,6 +114,8 @@
           <dt>For</dt><dd>{d.who || '—'}</dd>
           <dt>Room</dt><dd>{d.areaName || '—'}</dd>
           <dt>Personality</dt><dd><span class="swatch"></span>{p ? p.name : d.personality || '—'}</dd>
+          <dt>Microphone</dt><dd>{d.micMuted ? '🔇 off' : '🎙️ on'}</dd>
+          {#if d.volume !== undefined}<dt>Volume</dt><dd>{d.volume}%</dd>{/if}
           <dt>Last seen</dt><dd>{d.online ? 'on now' : ago(d.lastSeen)}</dd>
           <dt>First seen</dt><dd>{ago(d.firstSeen)}</dd>
           <dt>ID</dt><dd class="mono">{d.id}</dd>
@@ -135,6 +145,10 @@
               <input type="checkbox" bind:checked={editing.grownUps} />
               🧑 Grown-up mode (no kids' rules on this display)
             </label>
+            <label>
+              Volume: {editing.volume}%
+              <input type="range" min="0" max="100" step="5" bind:value={editing.volume} />
+            </label>
             <div class="row">
               <button class="primary" onclick={saveEdit}>Save</button>
               <button class="ghost" onclick={() => (editing = null)}>Cancel</button>
@@ -142,7 +156,8 @@
           </div>
         {:else}
           <div class="row">
-            <button class="ghost" onclick={() => (editing = { id: d.id, deviceName: d.name === d.areaName ? '' : d.name, name: d.who, area: d.area, grownUps: d.grownUps })}>✏️ Edit</button>
+            <button class="ghost" onclick={() => (editing = { id: d.id, deviceName: d.name === d.areaName ? '' : d.name, name: d.who, area: d.area, grownUps: d.grownUps, volume: d.volume ?? 100 })}>✏️ Edit</button>
+            <button class="ghost" onclick={() => act(d.id, 'set', { set: { micMuted: !d.micMuted } })}>{d.micMuted ? '🎙️ Mic on' : '🔇 Mic off'}</button>
             <button class="ghost" onclick={() => act(d.id, 'welcome')}>✨ Welcome</button>
             <button class="danger" onclick={() => act(d.id, 'wipe')}>{arming === `wipe:${d.id}` ? 'Tap again to wipe' : '🧽 Wipe'}</button>
             {#if !d.online}

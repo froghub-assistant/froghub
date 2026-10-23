@@ -131,3 +131,19 @@ test('displays that stop polling go offline after a minute', async () => {
   tick(61_000)
   expect(onlineDisplays()).toEqual([])
 })
+
+describe('what the admin page hears from a poll', () => {
+  test('a poll says whether its microphone is off, and its volume', async () => {
+    const query = new URLSearchParams({ after: '0', device: 'den1', name: 'Den', area: '', areaName: '', who: '', personality: 'frog', micMuted: 'true', volume: '35' })
+    await handleAnnouncements(request('GET', `/api/announcements?${query}`), '/api/announcements')
+    query.set('device', 'den2')
+    query.set('micMuted', 'false')
+    query.set('volume', 'loud')
+    await handleAnnouncements(request('GET', `/api/announcements?${query}`), '/api/announcements')
+    const listed = await read(handleRegistry(request('GET', '/api/admin/displays', undefined, await asAdmin()), '/api/admin/displays'))
+    expect(listed.find((d: { id: string }) => d.id === 'den1')).toMatchObject({ micMuted: true, volume: 35 })
+    const den2 = listed.find((d: { id: string }) => d.id === 'den2')
+    expect(den2.micMuted).toBe(false)
+    expect(den2.volume).toBeUndefined()
+  })
+})

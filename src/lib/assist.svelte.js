@@ -10,6 +10,7 @@ export const voice = $state({
   reply: '', // what the assistant said
   error: '',
   wakeWord: '',
+  muted: false, // the microphone is switched off (the 🎙️ button): no wake word, nothing heard or sent
 })
 
 const FOLLOW_UP_WINDOW = 5 * 60 * 1000 // keep the same conversation for 5 minutes
@@ -22,7 +23,11 @@ const NOT_SPEECH = /^[\s.,!?…-]*$|^(thank you|thanks|thanks for watching|you|b
 let ha = null
 let options = null // { personality, getContext, onActions }
 let pipelines = []
+let ctx = null // the AudioContext replies play through (the microphone's too, while it's on)
 let mic = null
+let muted = false
+let volume = 1 // 0..1, for replies
+let gain = null // the reply playing now, to change its volume mid-sentence
 let handlerId = null // stt_binary_handler_id of the current run; audio is only sent while set
 let run = null
 let stopped = true
@@ -44,18 +49,27 @@ function conversationId() {
   return conversation.id
 }
 
+function onPcm(pcm) {
+  if (tap) tap(pcm)
+  if (handlerId !== null && voice.status !== 'speaking') ha.sendAudio(handlerId, pcm)
+}
+
 export async function startVoice(client, opts) {
   ha = client
   options = opts
+  muted = voice.muted = !!opts.muted
   pipelines = (await ha.call({ type: 'assist_pipeline/pipeline/list' })).pipelines
   updateWakeWord()
-  if (!mic) {
-    mic = await startMic((pcm) => {
-      if (tap) tap(pcm)
-      if (handlerId !== null && voice.status !== 'speaking') ha.sendAudio(handlerId, pcm)
-    })
+  if (!ctx) {
+    const Context = window.AudioContext || window.webkitAudioContext
+    ctx = new Context()
   }
-  if (mic.context.state === 'suspended') await mic.context.resume()
+  if (!mic && !muted) mic = await startMic(onPcm, ctx)
+  if (ctx.state === 'suspended') {
+    // Without a tap since the page loaded, the browser may keep it suspended (and resume() waiting) for good
+    await Promise.race([ctx.resume(), new Promise((r) => setTimeout(r, 1000))])
+    if (ctx.state === 'suspended') throw new Error('The speaker needs a tap first')
+  }
   stopped = false
   listen('wake_word')
 }
@@ -85,15 +99,48 @@ export function stopVoice() {
   stopped = true
   endRun()
   if (playing) playing.stop()
-  if (mic) mic.stop()
+  if (mic) mic.stop(true)
   mic = null
+  if (ctx) ctx.close().catch(() => {})
+  ctx = null
   voice.status = 'off'
+}
+
+/** The 🎙️ button (or the admin page): off closes the microphone itself, so nothing is heard or sent until it's back on.
+ * Replies to typed questions, announcements and alarms still sound. */
+export async function setMicMuted(on) {
+  muted = voice.muted = !!on
+  if (muted) {
+    endStream()
+    endRun()
+    if (mic) mic.stop(true)
+    mic = null
+    tap = null
+    if (['listening', 'error'].includes(voice.status)) voice.status = 'waiting'
+    return
+  }
+  if (stopped || !ha || mic) return
+  try {
+    mic = await startMic(onPcm, ctx)
+  } catch (err) {
+    voice.status = 'error'
+    voice.error = 'Could not turn the microphone on: ' + err.message
+    return
+  }
+  // Mid-reply, the reply goes back to the wake word itself when it's done
+  if (!['thinking', 'speaking'].includes(voice.status)) again('wake_word', 0)
+}
+
+/** Volume for replies and announcements, 0 to 100. */
+export function setVolume(percent) {
+  volume = Math.max(0, Math.min(100, Number(percent) || 0)) / 100
+  if (gain) gain.gain.value = volume
 }
 
 // Tapping the face: start listening without the wake word, stop listening (finish the sentence now),
 // or cut a spoken reply short.
 export function tapToTalk() {
-  if (stopped || !ha) return
+  if (stopped || !ha || muted) return
   if (voice.status === 'waiting' || voice.status === 'error') {
     endStream()
     endRun()
@@ -144,7 +191,7 @@ export async function sayUnasked(text, { silent = false, show = () => {} } = {})
     voice.heard = ''
     voice.reply = a.text
     a.show()
-    if (!a.silent && !stopped && ha && mic) {
+    if (!a.silent && !stopped && ha && ctx) {
       endStream()
       endRun()
       await speak(a.text)
@@ -180,6 +227,10 @@ function fail(message, delay = 2000) {
 // Wake word (or straight to listening for a follow-up) → speech-to-text.
 function listen(stage) {
   if (stopped || !ha) return
+  if (muted || !mic) {
+    voice.status = 'waiting' // the microphone is off: typed questions only
+    return
+  }
   voice.status = stage === 'wake_word' ? 'waiting' : 'listening'
   let heard = ''
 
@@ -316,13 +367,15 @@ async function play(url) {
   try {
     const path = url.replace(/^https?:\/\/[^/]+/, '').replace(/^\/api\/tts_proxy\//, '/tts/')
     const data = await (await fetch(path)).arrayBuffer()
-    const ctx = mic.context
     const buffer = await new Promise((ok, bad) => ctx.decodeAudioData(data, ok, bad))
     await new Promise((done) => {
       const source = ctx.createBufferSource()
       source.buffer = buffer
       source.playbackRate.value = options.personality.pitch || 1
-      source.connect(ctx.destination)
+      gain = ctx.createGain()
+      gain.gain.value = volume
+      source.connect(gain)
+      gain.connect(ctx.destination)
       source.onended = done
       playing = { stop: () => { try { source.stop() } catch { /* already stopped */ } done() } }
       source.start(0)
@@ -331,6 +384,7 @@ async function play(url) {
     voice.error = 'Could not play the reply: ' + err.message
   } finally {
     playing = null
+    gain = null
     voice.status = 'waiting'
   }
 }

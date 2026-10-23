@@ -1,5 +1,7 @@
 // Alarms and timers live on the server (set by the assistant); this polls them and rings the one that's due.
 
+import { settings } from './settings.svelte.js'
+
 const POLL_MS = 10000
 const RING_MAX_MS = 10 * 60 * 1000 // give up (counts as stopped) after ten minutes
 
@@ -58,8 +60,10 @@ export function finish(how) {
   }).then(poll, poll)
 }
 
-// A friendly three-note chime every two seconds, getting louder for the first half minute.
+// A friendly three-note chime every two seconds, getting louder for the first half minute. It follows the display's
+// volume, but never below 20%, so a turned-down tablet still wakes someone.
 function playChime() {
+  const level = Math.max(0.2, (settings.volume ?? 100) / 100)
   const Context = window.AudioContext || window.webkitAudioContext
   const ctx = new Context()
   const started = ctx.currentTime
@@ -73,7 +77,7 @@ function playChime() {
       osc.type = 'sine'
       osc.frequency.value = freq
       gain.gain.setValueAtTime(0.0001, t)
-      gain.gain.exponentialRampToValueAtTime(0.5 * loud, t + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.5 * loud * level, t + 0.02)
       gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.6)
       osc.connect(gain)
       gain.connect(ctx.destination)
