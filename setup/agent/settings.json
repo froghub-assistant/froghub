@@ -7,6 +7,7 @@
       "Edit({{MEMORY}}/**)",
       "mcp__froghub__reply",
       "mcp__froghub__get_weather",
+      "mcp__froghub__find_recipe",
       "mcp__froghub__set_alarm",
       "mcp__froghub__set_timer",
       "mcp__froghub__list_alarms",

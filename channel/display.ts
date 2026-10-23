@@ -22,7 +22,7 @@ export const displayTool = {
       emoji: { type: 'string', description: 'One big emoji' },
       items: { type: 'array', items: { type: 'string' }, description: 'Up to 8 short lines (steps, a list, spellings)' },
       picture_of: { type: 'string', description: 'English Wikipedia article whose main picture to show, e.g. "Red panda", "Eiffel Tower"' },
-      image_url: { type: 'string', description: 'Or an exact https://upload.wikimedia.org/… image URL' },
+      image_url: { type: 'string', description: 'Or an exact https://upload.wikimedia.org/… image URL, or the picture find_recipe gave' },
       seconds: { type: 'number', description: 'How long to show it, 5-300 (default 30)' },
     },
     required: ['request_id'],
@@ -55,7 +55,8 @@ export async function cleanDisplay(a: Record<string, unknown>): Promise<Display>
   }
   if (a.image_url !== undefined) {
     const url = String(a.image_url)
-    if (!/^https:\/\/(upload|thumb)\.wikimedia\.org\/[^\s"'<>]+$/.test(url)) throw new Error('Pictures must be upload.wikimedia.org or thumb.wikimedia.org URLs.')
+    if (!/^https:\/\/((upload|thumb)\.wikimedia\.org|www\.themealdb\.com\/images)\/[^\s"'<>]+$/.test(url))
+      throw new Error('Pictures must be upload.wikimedia.org or thumb.wikimedia.org URLs (or a recipe picture from find_recipe).')
     d.image = url
   }
   if (!d.title && !d.text && !d.emoji && !d.items?.length && !d.image) throw new Error('Nothing to show.')

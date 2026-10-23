@@ -137,6 +137,14 @@ announcement, so "tell them the weather for the walk" is worked out then). Jobs 
 `~/.config/froghub/schedule.json`, run in the house's time zone and survive restarts; at most 30, and a repeating one
 at most 4 times an hour. `list_schedule` and `cancel_schedule` manage them. Both use the `announce` policy switch.
 
+## Recipes
+
+The assistant's `find_recipe` tool uses [TheMealDB](https://www.themealdb.com): a recipe by name, ideas by main
+ingredient, category (Dessert, Vegetarian…) or cuisine (British, Indian…), or one at random. It can put the picture and
+the ingredients on screen (`show_on_screen` accepts TheMealDB's pictures) and say the measures in grams and °C. It uses
+TheMealDB's free key `1` (personal and educational use); set `FROGHUB_MEALDB_KEY` for your own. Claude Code brain only,
+like the weather and alarms.
+
 ## Thinking harder, and a fresh start
 
 The assistant is Haiku, which is quick. For what needs real thought (homework, a careful explanation, planning) it can

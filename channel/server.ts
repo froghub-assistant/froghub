@@ -28,6 +28,7 @@ import { randomBytes } from 'crypto'
 import { THINK_DESCRIPTION, bigModel, thinkHarder } from './thinker.ts'
 import { type Job, runScheduleTool, scheduleTools, startSchedule } from './schedule.ts'
 import { weatherTool, getWeather } from './weather.ts'
+import { findRecipe, recipeTool } from './recipes.ts'
 import { alarmTools, runAlarmTool, handleAlarms } from './alarms.ts'
 import { handleStore, isGrownUps, policy, sharedSettings } from './store.ts'
 import { handleRegistry } from './registry.ts'
@@ -103,6 +104,7 @@ mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     weatherTool,
+    recipeTool,
     ...alarmTools,
     displayTool,
     ...(bigModel('sonnet') ? [{
@@ -158,6 +160,13 @@ mcp.setRequestHandler(CallToolRequestSchema, async req => {
       return { content: [{ type: 'text', text: await getWeather(req.params.arguments ?? {}) }] }
     } catch (err) {
       return { isError: true, content: [{ type: 'text', text: `Couldn't get the weather: ${(err as Error).message}` }] }
+    }
+  }
+  if (req.params.name === 'find_recipe') {
+    try {
+      return { content: [{ type: 'text', text: await findRecipe(req.params.arguments ?? {}) }] }
+    } catch (err) {
+      return { isError: true, content: [{ type: 'text', text: (err as Error).message }] }
     }
   }
   if (req.params.name === 'show_on_screen') {
