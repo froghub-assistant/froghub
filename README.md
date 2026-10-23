@@ -26,7 +26,7 @@ admin PIN and which brain to use, then:
 - writes `~/.config/froghub/` (`instance.json`, `weather.json`, `pin`);
 - installs the assistant as a systemd user service: **Claude Code** on Haiku with your Claude subscription
   (`setup/agent/` → `~/froghub-agent`, unit `froghub-agent`), or **standalone** (`channel/standalone.ts`: the
-  Anthropic API and/or a local OpenAI-compatible model such as LM Studio; key in `~/.config/froghub/standalone.env`,
+  Anthropic API and/or an OpenAI-compatible one: LM Studio, Ollama or OpenAI itself; keys in `~/.config/froghub/standalone.env`,
   rules in `~/.config/froghub/assistant.md`, unit `froghub-standalone`). Both serve the same HTTP API (`channel/app.ts`)
   and have the same tools (`channel/tools.ts`: weather, recipes, alarms, cards, messages, announcements, schedules);
 - builds the web app and copies it to the web root;
@@ -145,7 +145,7 @@ Code brain's files). All of it goes into every prompt, and its `remember`, `chan
 tidy, so "forget that" from the admin page really does. Past about 6,000 characters it's told to merge or forget old
 notes, and only the newest part is shown to it.
 
-Claude searches the web with Anthropic's own search tool. The local model (LM Studio) gets a `web_search` tool that
+Claude searches the web with Anthropic's own search tool. The OpenAI-compatible model (LM Studio, Ollama or OpenAI) gets a `web_search` tool that
 reads DuckDuckGo's results, or a SearXNG instance's if `FROGHUB_SEARCH_URL` points at one (with `format=json` allowed).
 It has all the other tools too; for a small model that gets lost among them, `FROGHUB_FALLBACK_TOOLS=basic` offers only
 reply, memory and web search. The grown-ups' memory and web search switches apply to both.

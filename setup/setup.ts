@@ -199,13 +199,18 @@ if (brain === 'claude-code') {
     env.FROGHUB_MODEL = ask('Claude model', env.FROGHUB_MODEL || 'claude-haiku-5-5')
     env.FROGHUB_BIG_MODEL = ask('Bigger model it may hand hard questions to ("none" for none)', env.FROGHUB_BIG_MODEL || 'claude-sonnet-5-5')
   }
-  const local = ask(`OpenAI-compatible server for ${env.ANTHROPIC_API_KEY ? 'when the API fails' : 'the answers'}, e.g. http://192.168.1.20:1234/v1 ("none" for none)`, env.FROGHUB_FALLBACK_URL || (env.ANTHROPIC_API_KEY ? 'none' : ''))
+  say('An OpenAI-compatible API: LM Studio (http://<computer>:1234/v1), Ollama (http://<computer>:11434/v1) or OpenAI (https://api.openai.com/v1).')
+  const local = ask(`Its address, for ${env.ANTHROPIC_API_KEY ? 'when the Anthropic API fails' : 'the answers'} ("none" for none)`, env.FROGHUB_FALLBACK_URL || (env.ANTHROPIC_API_KEY ? 'none' : ''))
   if (local && local !== 'none') {
     env.FROGHUB_FALLBACK_URL = local
-    env.FROGHUB_FALLBACK_MODEL = ask('Model name there', env.FROGHUB_FALLBACK_MODEL || '')
+    env.FROGHUB_FALLBACK_MODEL = ask('Model name there (e.g. qwen3:8b on Ollama, gpt-5-mini on OpenAI)', env.FROGHUB_FALLBACK_MODEL || '')
+    const key = secret(env.FROGHUB_FALLBACK_KEY ? 'Its API key (Enter to keep the one set now; "none" for none)' : 'Its API key (Enter for none: LM Studio and Ollama need none)')
+    if (key === 'none') delete env.FROGHUB_FALLBACK_KEY
+    else if (key) env.FROGHUB_FALLBACK_KEY = key
   } else {
     delete env.FROGHUB_FALLBACK_URL
     delete env.FROGHUB_FALLBACK_MODEL
+    delete env.FROGHUB_FALLBACK_KEY
   }
   if (!env.ANTHROPIC_API_KEY && !env.FROGHUB_FALLBACK_URL) say('⚠️  No API key and no local model: it will only be able to say it can\'t answer.')
   write(envFile, '# Frog Hub standalone assistant (written by bun run setup; keep this private)\n' +

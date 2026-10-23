@@ -5,7 +5,8 @@
  * web app doesn't know the difference.
  *
  * Brain: Claude via the Anthropic API when ANTHROPIC_API_KEY is set, otherwise (or when that fails) an
- * OpenAI-compatible server such as LM Studio at FROGHUB_FALLBACK_URL.
+ * OpenAI-compatible API at FROGHUB_FALLBACK_URL: LM Studio (http://<pc>:1234/v1), Ollama (http://<pc>:11434/v1) or
+ * OpenAI itself (https://api.openai.com/v1, with FROGHUB_FALLBACK_KEY).
  *
  * Environment (put secrets in an EnvironmentFile, not the unit):
  *   ANTHROPIC_API_KEY       Anthropic API key (optional)
@@ -13,6 +14,7 @@
  *   FROGHUB_BIG_MODEL       the bigger one it hands hard questions to (default claude-sonnet-5-5; "none" turns it off)
  *   FROGHUB_FALLBACK_URL    OpenAI-compatible base URL, e.g. http://192.168.1.20:1234/v1 (optional)
  *   FROGHUB_FALLBACK_MODEL  model name there
+ *   FROGHUB_FALLBACK_KEY    its API key, if it wants one (OpenAI does; LM Studio and Ollama don't)
  *   FROGHUB_FALLBACK_TOOLS  "basic" offers the local model only reply, memory and web search, for a small model
  *                           that gets lost among many tools (default: all of them)
  *   FROGHUB_SEARCH_URL      a SearXNG instance for the local model's web search (default DuckDuckGo; see websearch.ts)
@@ -39,6 +41,7 @@ const MODEL = process.env.FROGHUB_MODEL || 'claude-haiku-5-5'
 const BIG_MODEL = bigModel('claude-sonnet-5-5')
 const FALLBACK_URL = (process.env.FROGHUB_FALLBACK_URL || '').replace(/\/+$/, '')
 const FALLBACK_MODEL = process.env.FROGHUB_FALLBACK_MODEL || ''
+const FALLBACK_KEY = process.env.FROGHUB_FALLBACK_KEY || ''
 const PROMPT_FILE = process.env.FROGHUB_PROMPT || join(homedir(), '.config', 'froghub', 'assistant.md')
 const FALLBACK_ALL = process.env.FROGHUB_FALLBACK_TOOLS !== 'basic'
 const TIMEOUT_MS = 40_000
@@ -179,10 +182,11 @@ async function askFallback(system: string, messages: Turn[], from: Screen | unde
   for (let round = 0; round < 5; round++) {
     const r = await fetch(`${FALLBACK_URL}/chat/completions`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...(FALLBACK_KEY ? { authorization: `Bearer ${FALLBACK_KEY}` } : {}) },
       body: JSON.stringify({
         model: FALLBACK_MODEL,
-        max_tokens: 600,
+        // OpenAI's own API wants the newer name (its reasoning models refuse max_tokens); local servers the older one
+        ...(new URL(FALLBACK_URL).hostname === 'api.openai.com' ? { max_completion_tokens: 600 } : { max_tokens: 600 }),
         messages: convo,
         tools: offered.map(t => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.inputSchema } })),
         tool_choice: 'required',

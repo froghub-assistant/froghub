@@ -14,6 +14,7 @@ Object.assign(process.env, {
   FROGHUB_FALLBACK_URL: 'http://fallback.test/v1/',
   FROGHUB_FALLBACK_MODEL: 'local-model',
   FROGHUB_SEARCH_URL: 'http://search.test',
+  FROGHUB_FALLBACK_KEY: 'local-key',
 })
 const MEMORY = join(CONFIG, 'memory.md')
 writeFileSync(join(CONFIG, 'assistant.md'), 'You are Frog Hub (test rules).')
@@ -21,7 +22,7 @@ writeFileSync(join(CONFIG, 'assistant.md'), 'You are Frog Hub (test rules).')
 type Body = { model: string; system?: string; messages: { role: string; content: unknown }[]; tools: { name: string }[] }
 let claude: (body: Body) => Response = () => new Response('down', { status: 500 })
 let fallback: (body: Body) => Response = () => new Response('down', { status: 500 })
-const asked: { to: 'claude' | 'fallback'; body: Body }[] = []
+const asked: { to: 'claude' | 'fallback'; body: Body; headers: Record<string, string> }[] = []
 const searched: string[] = []
 
 const realFetch = globalThis.fetch
@@ -34,7 +35,7 @@ spyOn(globalThis, 'fetch').mockImplementation((async (input: RequestInfo | URL, 
   if (url === 'https://api.anthropic.com/v1/messages' || url === 'http://fallback.test/v1/chat/completions') {
     const to = url.includes('anthropic') ? 'claude' : 'fallback'
     const body = JSON.parse(String(init?.body))
-    asked.push({ to, body })
+    asked.push({ to, body, headers: init?.headers as Record<string, string> })
     return (to === 'claude' ? claude : fallback)(body)
   }
   return realFetch(input, init)
@@ -136,6 +137,8 @@ describe('when Claude fails', () => {
     expect(asked.map(x => x.to)).toEqual(['claude', 'fallback'])
     const { body } = asked[1]
     expect(body.model).toBe('local-model')
+    expect(asked[1].headers.authorization).toBe('Bearer local-key')
+    expect(body).toMatchObject({ max_tokens: 600 })
     expect(body.messages[0]).toMatchObject({ role: 'system' })
   })
 
