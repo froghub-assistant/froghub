@@ -2,8 +2,8 @@
 <!-- Frog Hub Admin: the admin page (<site>/admin) as a phone app. Built like android/ (see build.sh). -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="party.froghub.admin"
-    android:versionCode="2"
-    android:versionName="1.1">
+    android:versionCode="3"
+    android:versionName="1.2">
 
     <uses-permission android:name="android.permission.INTERNET" />
 
