@@ -17,7 +17,7 @@ expires after a while. Too many wrong PINs lock it for a few minutes.
 
 | Route | What it does |
 | --- | --- |
-| `POST /local/announce` | Say something on the displays: `{say, show?}`, `{prompt}`, `{audio, title?}` or `{stop_audio: true}`, with optional `to`, `area`, `at_night`, `personality`. See [Announcements](/features/announcements) |
+| `POST /local/announce` | Say something on the displays: `{say, show?}`, `{prompt}`, `{audio, title?}`, `{stop_audio: true}` or `{goodnight: true, sound?, minutes?}`, with optional `to`, `area`, `at_night`, `personality`. See [Announcements](/features/announcements) |
 | `POST /api/announce` | A display's 📢 message: `{text, to?, device, name}` |
 | `POST /api/admin/announce` | An announcement from the admin page. Admin only |
 | `GET /api/announcements?after=&device=&name=&area=` | Each display's poll (every 5 s): new announcements, plus anything queued for it as `command` |

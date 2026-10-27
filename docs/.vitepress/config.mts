@@ -33,6 +33,7 @@ export default defineConfig({
           { text: 'Room devices and music', link: '/features/devices-music' },
           { text: 'Announcements and schedules', link: '/features/announcements' },
           { text: 'Alarms and timers', link: '/features/alarms' },
+          { text: 'Goodnight', link: '/features/goodnight' },
           { text: 'Lists', link: '/features/lists' },
           { text: 'Recipes', link: '/features/recipes' },
           { text: 'Sums, words and facts', link: '/features/facts' },

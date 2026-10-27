@@ -32,6 +32,10 @@ features:
     title: Alarms, lists and announcements
     details: '"Wake me at seven", "add milk to the shopping list", "tell the kitchen I''m hungry", "every school day at 7:45, tell them to get their shoes on".'
     link: /features/announcements
+  - icon: 🌙
+    title: Goodnight
+    details: 'Say goodnight and the lights go down, the screen stays dark until morning and rain or waves play you to sleep. A bedtime story too, if you ask.'
+    link: /features/goodnight
   - icon: 🍝
     title: Recipes, words and facts
     details: Recipes by name or by what's in the fridge, exact sums and unit conversions, a dictionary, Wikipedia and Wikidata, with cards and pictures on the screen.
