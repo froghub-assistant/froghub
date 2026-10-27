@@ -77,7 +77,7 @@ class DlnaSpeaker {
     DlnaSpeaker(Context context, Listener listener) {
         this.context = context.getApplicationContext();
         this.listener = listener;
-        SharedPreferences prefs = context.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE);
+        SharedPreferences prefs = context.getSharedPreferences(DisplayActivity.PREFS, Context.MODE_PRIVATE);
         String id = prefs.getString("dlna_uuid", null);
         if (id == null) {
             id = UUID.randomUUID().toString();
@@ -344,7 +344,7 @@ class DlnaSpeaker {
                     int v = Math.max(0, Math.min(100, parseInt(arg(body, "DesiredVolume"), volume)));
                     onMain(() -> {
                         volume = v;
-                        context.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE).edit().putInt("dlna_volume", v).apply();
+                        context.getSharedPreferences(DisplayActivity.PREFS, Context.MODE_PRIVATE).edit().putInt("dlna_volume", v).apply();
                         applyVolume();
                         notifyAll("rc");
                     });
