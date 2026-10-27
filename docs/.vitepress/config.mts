@@ -1,7 +1,10 @@
 import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 
-// Published to https://froghub-assistant.github.io by .github/workflows/docs.yml
-export default defineConfig({
+// Published to https://froghub-assistant.github.io by .github/workflows/docs.yml. ```mermaid blocks are diagrams.
+export default withMermaid(defineConfig({
+  // the page's own font, so Mermaid sizes each box for the text that's drawn in it
+  mermaid: { fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', flowchart: { padding: 14, htmlLabels: false, wrappingWidth: 400 } },
   title: 'Frog Hub',
   description: "A homemade smart display for children's tablets",
   lang: 'en-GB',
@@ -65,4 +68,4 @@ export default defineConfig({
     docFooter: { prev: 'Previous', next: 'Next' },
     lastUpdated: { text: 'Last updated' },
   },
-})
+}))

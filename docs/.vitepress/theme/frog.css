@@ -35,3 +35,28 @@
 .vp-doc a.download:hover {
   background: var(--vp-c-brand-2);
 }
+
+/* Mermaid diagrams in Frog Hub's green, in light and dark */
+.vp-doc .mermaid .node rect,
+.vp-doc .mermaid rect.actor {
+  fill: var(--vp-c-brand-soft) !important;
+  stroke: var(--vp-c-brand-3) !important;
+}
+.vp-doc .mermaid .cluster rect {
+  fill: var(--vp-c-bg-soft) !important;
+  stroke: var(--vp-c-divider) !important;
+}
+.vp-doc .mermaid .nodeLabel,
+.vp-doc .mermaid .cluster-label,
+.vp-doc .mermaid text.actor,
+.vp-doc .mermaid .messageText {
+  color: var(--vp-c-text-1) !important;
+  fill: var(--vp-c-text-1) !important;
+}
+.vp-doc .mermaid .edgeLabel,
+.vp-doc .mermaid .edgeLabel rect,
+.vp-doc .mermaid .labelBkg {
+  background-color: var(--vp-c-bg) !important;
+  fill: var(--vp-c-bg) !important;
+  color: var(--vp-c-text-2) !important;
+}

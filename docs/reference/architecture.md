@@ -1,18 +1,25 @@
 # How it fits together
 
-```
-Tablet (Fully Kiosk Browser or the Android app) ── https://<site> (Caddy on the server, ideally home network only)
-  │  Svelte app: clock, weather, room buttons, animated face
-  │
-  ├─ Home Assistant WebSocket (a non-admin token, from the welcome or the tablet's settings)
-  │    pipeline "Frog Hub · <Personality>": openWakeWord ("hey jarvis") → Whisper → … → Piper voice
-  │
-  ├─ /api/ask → the Frog Hub server (127.0.0.1:8790) → the brain
-  │    Claude Code: Haiku in its own session (~/froghub-agent: its own CLAUDE.md and memory, no shell, no other MCP servers)
-  │    or the API brain: the Anthropic API and/or an OpenAI-compatible one
-  │    replies with text and optional actions, which the display runs only for devices in its room
-  │
-  └─ /tts/* → Home Assistant's tts_proxy (same origin, so the app can pitch-shift each personality's voice)
+```mermaid
+flowchart TB
+  app["The display (a web app on a tablet)"]
+  subgraph server["Your server"]
+    caddy["Caddy (https)"]
+    fh["Frog Hub server (port 8790)"]
+    brain["The brain (Claude Code or a model API)"]
+  end
+  subgraph ha["Home Assistant"]
+    pipe["Frog Hub's pipelines"]
+    voice["openWakeWord, Whisper, Piper"]
+    devices["The room's devices"]
+  end
+  app -->|"questions, alarms, announcements"| caddy
+  caddy --> fh
+  fh <-->|"question, reply and actions"| brain
+  app -->|"voice, with its own token"| pipe
+  pipe --> voice
+  app -->|"room actions"| devices
+  fh -.->|"lists, with the shared token"| ha
 ```
 
 - **The display** is a web app (Svelte). It talks to Home Assistant directly, with its own token, for the voice and the
@@ -28,6 +35,19 @@ Tablet (Fully Kiosk Browser or the Android app) ── https://<site> (Caddy on 
 
 ## A request, step by step
 
-1. Wake word and speech-to-text: one pipeline run (`wake_word` → `stt`), audio streamed as 16 kHz PCM.
-2. The answer: `POST /api/ask` with the text, personality, speaker's name and the room's devices.
-3. Speech: a second pipeline run (`tts` only) with the personality's Piper voice, played back at its `pitch`.
+```mermaid
+sequenceDiagram
+  participant D as Display
+  participant HA as Home Assistant
+  participant S as Frog Hub server
+  participant B as Brain
+  D->>HA: pipeline run (wake_word → stt), 16 kHz PCM
+  HA-->>D: what was said
+  D->>S: POST /api/ask (text, personality, speaker, room's devices)
+  S->>B: the question
+  B-->>S: reply (text, room actions, a card)
+  S-->>D: the reply
+  D->>HA: room actions (only this room's devices)
+  D->>HA: pipeline run (tts) in the personality's Piper voice
+  HA-->>D: audio, played at the personality's pitch
+```
