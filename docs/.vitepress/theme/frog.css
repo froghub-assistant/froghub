@@ -60,3 +60,13 @@
   fill: var(--vp-c-bg) !important;
   color: var(--vp-c-text-2) !important;
 }
+.vp-doc a.download svg {
+  display: inline-block;
+  vertical-align: -3px;
+  margin-right: 4px;
+}
+
+/* The home page's Lucide icons, in the frog green */
+.VPFeature .icon {
+  color: var(--vp-c-brand-1);
+}

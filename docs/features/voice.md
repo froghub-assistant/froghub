@@ -7,7 +7,7 @@ Each personality changes the look, the on-screen words, the voice, and how the a
 - **Verity** (the default)
 - **Falsity**
 - **Lovity**
-- **Frog** 🐸
+- **Frog**
 
 The display's personality is picked in the welcome or Settings, and the assistant is told it with every request.
 
@@ -27,13 +27,13 @@ without asking the assistant.
 
 ## Long answers
 
-Long answers are fine: the assistant puts the main point first. A reply over 350 characters goes on a 📝 card, and only
+Long answers are fine: the assistant puts the main point first. A reply over 350 characters goes on a card, and only
 the first part is spoken, followed by "The rest is on the screen."
 
 ## Cards on the screen
 
 The assistant can put a card on the screen with its reply (`show_on_screen`): a title, an emoji or picture, text and
-lists, such as a recipe's ingredients, how to spell a word or a times table. Cards scroll, and ⛶ makes them full screen.
+lists, such as a recipe's ingredients, how to spell a word or a times table. Cards scroll, and the full-screen button makes them fill the screen.
 
 ## Thinking harder
 

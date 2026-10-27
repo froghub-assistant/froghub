@@ -3,7 +3,7 @@
 A homemade smart display (like an Echo Show / Nest Hub) for children's tablets (even old ones on Fire OS 5), with switchable personalities:
 **Verity** (default), **Falsity**, **Lovity** and **Frog**.
 
-**📖 Documentation: [froghub-assistant.github.io](https://froghub-assistant.github.io)**
+**Documentation: [froghub-assistant.github.io](https://froghub-assistant.github.io)**
 
 - Talk to it: wake word, speech-to-text and voices run at home through Home Assistant.
 - It runs the room: lights, switches, fans and speakers in the display's own room, and music by name on an Echo or a

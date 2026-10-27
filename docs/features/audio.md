@@ -3,7 +3,7 @@
 `play_audio` and `stop_audio` play a sound, song or radio stream from an **https** link on the displays: the one that
 asked, one by name, or all of them. It goes out like an announcement, so a scheduled job can do it too.
 
-The server checks the link really is audio first. While it plays, the display shows 🎵 with the title and a ⏹ button,
+The server checks the link really is audio first. While it plays, the display shows the title with a stop button,
 uses its own volume (turned down while someone talks to it), and stays quiet at night unless `at_night` is set.
 
 Anything on the server can play audio as well:

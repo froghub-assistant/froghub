@@ -11,7 +11,7 @@ Home Assistant often has people's own lists too (from their Google account, say)
 grown-up shares with it:
 
 - By default, only Home Assistant's own **Shopping list** (`todo.shopping_list`).
-- The admin page's **Assistant** tab lists every to-do list in Home Assistant under *📝 Lists it can use*: tick the
+- The admin page's **Assistant** tab lists every to-do list in Home Assistant under *Lists it can use*: tick the
   ones the assistant may read and change.
 
 The server reaches Home Assistant with the Home Assistant token the displays share (the one a grown-up set up with

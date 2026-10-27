@@ -4,13 +4,13 @@
 
 `<your site>/admin`, behind the PIN. It has:
 
-- **Displays:** every Frog Hub that has ever checked in, with ✏️ edit (name, room, mic, volume), show the welcome,
+- **Displays:** every Frog Hub that has ever checked in, with edit (name, room, mic, volume), show the welcome,
   wipe (erases its storage and starts it again as a new display) and forget. Displays pick up changes on their next
   poll, within 5 seconds.
 - **Announcements and alarms:** say something on the displays now, and see or cancel alarms and timers.
 - **Assistant:** what the assistant may use (below), and which [lists](/features/lists) it may use.
 - **Memory:** the assistant's memory files, and asking it to remember or forget something.
-- **📜 History:** what it was asked and what it answered.
+- **History:** what it was asked and what it answered.
 - **Voices:** the wake word recordings.
 
 There's a phone app for it too: see [the Android apps](/developers/android).
@@ -38,7 +38,7 @@ When something is switched off, the assistant is told, so it can say so kindly i
 
 ## History
 
-**📜 History** lists everything the assistant was asked and what it answered, newest first: questions at the displays
+**History** lists everything the assistant was asked and what it answered, newest first: questions at the displays
 (which one, who, and what it did or showed), the admin page's memory requests, announcements and scheduled jobs, and
 any that got no answer in time. It can be searched and cleared there.
 
@@ -50,7 +50,7 @@ It's kept in `~/.config/froghub/history.jsonl`, readable only by Frog Hub's user
 
 ## Admin mode on a display
 
-Typing the PIN on a display (⚙️) unlocks admin mode there for a while, checked on the server, so nobody gets it by
+Typing the PIN on a display (the gear button) unlocks admin mode there for a while, checked on the server, so nobody gets it by
 saying they're a grown-up. In admin mode the assistant may also say what it remembers and change or delete memories
 (otherwise it only adds new ones), save **house rules** ("bedtime is 8pm on school nights", "no scary stories") and
 follow them afterwards even if a child asks otherwise, and talk plainly about how the display works.

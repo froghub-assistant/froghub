@@ -2,7 +2,7 @@
 
 ## Messages between displays
 
-Displays can message each other. The 📢 button (bottom left) sends typed text to every other display or one of them,
+Displays can message each other. The megaphone button (bottom left) sends typed text to every other display or one of them,
 and the assistant has a `send_message` tool ("tell the kitchen I'm hungry"). The sender never shows its own message.
 
 ## Announcements

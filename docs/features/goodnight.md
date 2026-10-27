@@ -11,7 +11,7 @@ picks the sound and the time for that night only.
 
 ## Settings
 
-Each display has its own, under **Settings → 🌙 Goodnight**: what happens to the lights (and how dim), which sound and
+Each display has its own, under **Settings → Goodnight**: what happens to the lights (and how dim), which sound and
 for how long. **▶ Hear it** plays a few seconds of the sound. Night mode's hours, in the same Settings, decide when
 the morning is.
 
