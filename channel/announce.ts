@@ -8,6 +8,7 @@
  *       or { prompt: "what the assistant should tell the room" }: it goes to the assistant like a question and its
  *       reply (with any card or room actions) is announced
  *       or { audio: "https://…mp3", title? }: played on the displays (audio.ts); { stop_audio: true } stops it
+ *       or { goodnight: true, sound?, minutes? }: the goodnight routine (goodnight.ts)
  *       optional: to (a display's name), area (only displays set to that room), at_night (speak during night hours
  *       too; otherwise it's only shown), personality (for a prompt; default the shared one)
  *   - Someone at a display, with the 📢 button: POST /api/announce { text, to?, device, name }
@@ -21,6 +22,7 @@
 import { clean, json } from './common.ts'
 import { checkIn } from './registry.ts'
 import type { Display } from './display.ts'
+import type { Goodnight } from './goodnight.ts'
 
 export type Announcement = {
   id: number
@@ -31,6 +33,7 @@ export type Announcement = {
   to?: string // a display's id: only that one
   from?: string // the sending display's id: never shown there
   audio?: { url?: string; title?: string; hls?: true; stop?: true } // play_audio, play_radio and stop_audio (audio.ts, radio.ts)
+  goodnight?: Goodnight // the goodnight routine (goodnight.ts)
   at_night: boolean
   at: number
 }

@@ -15,6 +15,7 @@ import { findSound, soundTool } from './sounds.ts'
 import { define, dictionaryTool } from './dictionary.ts'
 import { listsTool, runLists } from './lists.ts'
 import { alarmTools, runAlarmTool } from './alarms.ts'
+import { goodnightTool, runGoodnight } from './goodnight.ts'
 import { type Display, displayTool, cleanDisplay } from './display.ts'
 import { type Screen, announce, findDisplay, message, onlineDisplays } from './announce.ts'
 import { runScheduleTool, scheduleTools } from './schedule.ts'
@@ -76,7 +77,7 @@ const sendMessageTool: Tool = {
 /** The tools, for a brain that passes request_id to them (Claude Code) or not (the API brain). think_harder is
  * only offered with `think` (the API brain has its own, which hands the whole request over). */
 export function tools(o: { requestIds: boolean; think: boolean }): Tool[] {
-  const list: Tool[] = [weatherTool, recipeTool(), ...mathsTools, wikipediaTool, wikidataTool, dictionaryTool, historyTool, ...audioTools, radioTool, soundTool, listsTool, ...alarmTools, displayTool, ...(o.think && bigModel('sonnet') ? [thinkTool] : []),
+  const list: Tool[] = [weatherTool, recipeTool(), ...mathsTools, wikipediaTool, wikidataTool, dictionaryTool, historyTool, ...audioTools, radioTool, soundTool, listsTool, ...alarmTools, goodnightTool, displayTool, ...(o.think && bigModel('sonnet') ? [thinkTool] : []),
     announceTool, ...scheduleTools, sendMessageTool]
   if (o.requestIds) return list
   return list.map(t => {
@@ -108,6 +109,7 @@ export async function runTool(name: string, args: Record<string, unknown>, ctx: 
       if (!allowed.music) return off('playing music')
       return { text: await findSound(args) }
     }
+    if (name === 'goodnight') return { text: runGoodnight(args, ctx.from) }
     if (name === 'lists') {
       if (!allowed.lists) return off('the shared lists')
       return { text: await runLists(args) }

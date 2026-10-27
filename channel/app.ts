@@ -16,6 +16,7 @@ import { handleSamples } from './samples.ts'
 import { type Screen, announce, findDisplay, handleAnnouncements, onlineDisplays, screenFor } from './announce.ts'
 import { type Job, startSchedule } from './schedule.ts'
 import { checkAudioUrl } from './audio.ts'
+import { goodnightOptions } from './goodnight.ts'
 import { handleRadio } from './radio.ts'
 import { handleLists } from './lists.ts'
 
@@ -103,6 +104,7 @@ async function handleAnnounce(req: Request, ask: Ask): Promise<Response> {
       return json({ error: (err as Error).message }, 400)
     }
   }
+  if (body.goodnight === true) return json({ ok: true, id: announce({ text: say, goodnight: goodnightOptions(body), area, to, at_night: true }) })
   if (body.stop_audio === true) return json({ ok: true, id: announce({ text: '', audio: { stop: true }, area, to, at_night: true }) })
   if (say) {
     let display: Display | undefined

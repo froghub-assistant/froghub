@@ -44,12 +44,12 @@ const SYNCED = ['personality', 'nightStart', 'nightEnd', 'haUrl'] as const // no
 
 const read = (file: string) => (existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null)
 
-/** The settings a grown-up last published from admin mode (personality, name, area, ...), or {}. */
 /** The shared Home Assistant token, for the server's own calls (lists.ts); '' if there isn't one. */
 export function sharedToken(): string {
   return existsSync(TOKEN_FILE) ? readFileSync(TOKEN_FILE, 'utf8').trim() : ''
 }
 
+/** The settings a grown-up last published from admin mode (personality, name, area, ...), or {}. */
 export function sharedSettings(): Record<string, unknown> {
   return read(SETTINGS_FILE)?.settings ?? {}
 }
