@@ -37,6 +37,7 @@ export default withMermaid(defineConfig({
           { text: 'Announcements and schedules', link: '/features/announcements' },
           { text: 'Alarms and timers', link: '/features/alarms' },
           { text: 'Goodnight', link: '/features/goodnight' },
+          { text: 'Good morning', link: '/features/good-morning' },
           { text: 'Lists', link: '/features/lists' },
           { text: 'Recipes', link: '/features/recipes' },
           { text: 'Sums, words and facts', link: '/features/facts' },

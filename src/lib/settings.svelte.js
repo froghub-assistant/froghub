@@ -24,6 +24,15 @@ const defaults = {
   goodnightDim: 10, // percent, for dim
   goodnightSound: 'rain', // rain, waves, white noise or none
   goodnightMinutes: 45, // then it fades out
+  // The good morning routine, per display (App.svelte)
+  morningOn: false,
+  morningTime: '07:00', // in the house's time zone
+  morningDays: 'weekdays', // every day, weekdays or weekends
+  morningLights: 'fade', // the room's lights: fade (up beforehand) or leave
+  morningFade: 15, // minutes the lights take to come up, ending at morningTime
+  morningBright: 80, // percent they end at
+  morningSpeak: true, // say good morning: the time, the weather and today's events
+  morningCalendars: [], // HA calendar entities whose events it reads out
   maSpeaker: true, // be a Music Assistant speaker, when the server has one (music.svelte.js)
 }
 

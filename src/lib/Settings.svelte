@@ -5,9 +5,9 @@
   import { POLICY } from './policy.js'
   import { SLEEP_SOUNDS, playAudio, stopAudio } from './player.svelte.js'
   import { house } from './house.svelte.js'
-  import { Key, Mic, Moon, Play, RefreshCw, Settings as Gear, Shield, Sparkles, User } from '@lucide/svelte'
+  import { Key, Mic, Moon, Play, RefreshCw, Settings as Gear, Shield, Sparkles, Sunrise, User } from '@lucide/svelte'
 
-  let { areas = [], adminToken = null, onClose, onUnlock, onWelcome } = $props()
+  let { areas = [], calendars = [], adminToken = null, onClose, onUnlock, onWelcome } = $props()
 
   // What Frog Hub's assistant may use. Only shown, and only saved, in admin mode (the server checks the token too).
   let policy = $state(null)
@@ -146,6 +146,44 @@
       <button class="secondary small" onclick={trySound}><Play size={14} /> Hear it</button>
     {/if}
     <p class="note">Then the screen stays dark and quiet until night mode ends in the morning, or until someone talks to it.</p>
+  </details>
+
+  <details>
+    <summary><Sunrise size={18} /> Good morning</summary>
+    <label class="check"><input type="checkbox" bind:checked={draft.morningOn} /> Wake this room up in the morning</label>
+    {#if draft.morningOn}
+      <label>At <input type="time" bind:value={draft.morningTime} /></label>
+      <label>
+        On
+        <select bind:value={draft.morningDays}>
+          <option value="weekdays">Weekdays</option>
+          <option value="weekends">Weekends</option>
+          <option value="every">Every day</option>
+        </select>
+      </label>
+      <label>
+        The room's lights
+        <select bind:value={draft.morningLights}>
+          <option value="fade">Fade up, like a sunrise</option>
+          <option value="leave">Left as they are</option>
+        </select>
+      </label>
+      {#if draft.morningLights === 'fade'}
+        <label>Over the <input type="number" min="1" max="60" bind:value={draft.morningFade} /> minutes before, up to <input type="number" min="5" max="100" bind:value={draft.morningBright} /> %</label>
+      {/if}
+      <label class="check"><input type="checkbox" bind:checked={draft.morningSpeak} /> Then say good morning: the time and the weather</label>
+      {#if draft.morningSpeak && calendars.length}
+        <p class="note">And today's events from:</p>
+        {#each calendars as c (c.id)}
+          <label class="check">
+            <input type="checkbox" checked={draft.morningCalendars.includes(c.id)}
+              onchange={(e) => (draft.morningCalendars = e.currentTarget.checked ? [...draft.morningCalendars, c.id] : draft.morningCalendars.filter((id) => id !== c.id))} />
+            {c.name}
+          </label>
+        {/each}
+      {/if}
+      <p class="note">Night mode ends then too. The lights need the grown-ups' devices switch.</p>
+    {/if}
   </details>
 
   <details>

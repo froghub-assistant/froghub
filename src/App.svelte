@@ -105,12 +105,18 @@
   let hour = $derived(Number(now.toLocaleTimeString('en-GB', { hour: '2-digit', hour12: false, timeZone: TZ }).slice(0, 2)) % 24)
   // After goodnight (sleepUntil), it's night until the morning, or until someone talks to it.
   let sleepUntil = $state(loadSleep())
+  let wokeAt = $state(0) // good morning ended night mode early (for three hours, so it's well past nightEnd)
   let night = $derived(
-    now < sleepUntil || (settings.nightStart > settings.nightEnd
+    now < sleepUntil || (now - wokeAt > 3 * 3600000 && (settings.nightStart > settings.nightEnd
       ? hour >= settings.nightStart || hour < settings.nightEnd
-      : hour >= settings.nightStart && hour < settings.nightEnd),
+      : hour >= settings.nightStart && hour < settings.nightEnd)),
   )
   let weather = $derived(Object.values(states).find((s) => s.entity_id.startsWith('weather.')))
+  let calendars = $derived(
+    Object.values(states)
+      .filter((s) => s.entity_id.startsWith('calendar.'))
+      .map((s) => ({ id: s.entity_id, name: s.attributes.friendly_name || s.entity_id })),
+  )
   let partOfDay = $derived(hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening')
   let busy = $derived(['listening', 'thinking', 'speaking'].includes(voice.status))
   // Its moods: tired at bedtime, sad when it can't hear or nobody's talked to it for ages, otherwise happy.
@@ -370,6 +376,123 @@
   $effect(() => {
     if (busy && sleepUntil) setSleep(0) // someone's awake and talking to it
   })
+
+  // The good morning routine (Settings → Good morning), per display: the room's lights fade up over the minutes before
+  // the time, then it ends night mode and says good morning with the time, the weather and the day's events. Each part
+  // happens once a day, and still happens up to half an hour late (say the tablet was asleep or restarting).
+  const MORNING_WINDOW = 30 // minutes
+  $effect(() => {
+    if (!settings.morningOn || !me.ready || connection !== 'ok') return
+    const t = houseClock(now)
+    const days = { weekdays: t.day >= 1 && t.day <= 5, weekends: t.day === 0 || t.day === 6, every: true }
+    if (!days[settings.morningDays]) return
+    const [h, m] = String(settings.morningTime).split(':').map(Number)
+    const at = h * 60 + m
+    if (!Number.isFinite(at)) return
+    const done = loadMorning()
+    const fade = Math.max(1, Math.min(60, Number(settings.morningFade) || 15))
+    if (settings.morningLights === 'fade' && done.lights !== t.date && t.minutes >= at - fade && t.minutes < at + MORNING_WINDOW) {
+      saveMorning({ ...done, lights: t.date })
+      untrack(() => morningLights(Math.max(1, at - t.minutes) * 60))
+    }
+    if (done.greet !== t.date && t.minutes >= at && t.minutes < at + MORNING_WINDOW) {
+      saveMorning({ ...done, lights: done.lights === t.date || settings.morningLights !== 'fade' ? done.lights : t.date, greet: t.date })
+      untrack(goodMorning)
+    }
+  })
+
+  // The date, weekday (0 = Sunday) and minutes since midnight in the house's time zone
+  function houseClock(when) {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
+      timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(when).map((x) => [x.type, x.value]))
+    const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(p.weekday)
+    return { date: `${p.year}-${p.month}-${p.day}`, day, minutes: (Number(p.hour) % 24) * 60 + Number(p.minute) }
+  }
+  function loadMorning() {
+    try {
+      return JSON.parse(localStorage.getItem('froghub-morning') || '{}')
+    } catch {
+      return {}
+    }
+  }
+  function saveMorning(done) {
+    try {
+      localStorage.setItem('froghub-morning', JSON.stringify(done))
+    } catch {
+      // storage blocked: it could happen twice after a reload, that's all
+    }
+  }
+
+  async function morningLights(seconds) {
+    const allowed = await fetch('/api/policy').then((r) => r.json()).catch(() => ({}))
+    if (allowed.devices === false || !ha) return
+    const brightness = Math.max(5, Math.min(100, Number(settings.morningBright) || 80))
+    for (const id of areaEntities.filter((e) => e.startsWith('light.'))) {
+      ha.callService('light', 'turn_on', { entity_id: id, brightness_pct: brightness, transition: seconds }).catch(() => {})
+    }
+  }
+
+  const WEATHER_WORDS = {
+    'clear-night': 'clear', cloudy: 'cloudy', fog: 'foggy', hail: 'hailing', lightning: 'stormy', 'lightning-rainy': 'stormy',
+    partlycloudy: 'partly cloudy', pouring: 'pouring with rain', rainy: 'rainy', snowy: 'snowy', 'snowy-rainy': 'sleety',
+    sunny: 'sunny', windy: 'windy', 'windy-variant': 'windy', exceptional: 'wild',
+  }
+
+  async function goodMorning() {
+    setSleep(0)
+    wokeAt = Date.now()
+    if (window.FrogHubApp) window.FrogHubApp.wake()
+    if (!settings.morningSpeak) return
+    const who = settings.name ? ` ${settings.name}` : ''
+    const time = new Date().toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: TZ }).replace(':00', '').replace(' ', '')
+    const said = [`Good morning${who}! It's ${time}.`]
+    const items = []
+    if (weather) {
+      const temp = Math.round(Number(weather.attributes.temperature))
+      let line = `It's ${temp} degrees and ${WEATHER_WORDS[weather.state] || weather.state}`
+      try {
+        const r = await ha.call({ type: 'call_service', domain: 'weather', service: 'get_forecasts', service_data: { entity_id: weather.entity_id, type: 'daily' }, return_response: true })
+        const today = r.response[weather.entity_id].forecast[0]
+        line += `, with a high of ${Math.round(today.temperature)}`
+        if (/rain|pouring|lightning|snow/.test(today.condition) && !/rain|pouring|lightning|snow/.test(weather.state)) line += ` and ${WEATHER_WORDS[today.condition]} later`
+      } catch {
+        // no forecast: just how it is now
+      }
+      said.push(`${line}.`)
+      items.push(`${WEATHER[weather.state] || ''} ${temp}°`.trim())
+    }
+    const events = await todaysEvents()
+    if (events.length) {
+      said.push(`Today: ${events.map((e) => e.spoken).join(', ')}.`)
+      items.push(...events.map((e) => e.shown))
+    }
+    sayUnasked(said.join(' '), { show: () => showCard({ emoji: '🌅', title: 'Good morning', text: '', items, seconds: 120 }) })
+  }
+
+  // Today's events from the calendars picked in Settings → Good morning (the rest of today, soonest first)
+  async function todaysEvents() {
+    const ids = (settings.morningCalendars || []).filter((id) => states[id])
+    if (!ids.length) return []
+    const end = new Date(Date.now() + (24 * 60 - houseClock(new Date()).minutes) * 60000)
+    try {
+      const r = await ha.call({
+        type: 'call_service', domain: 'calendar', service: 'get_events', return_response: true,
+        service_data: { entity_id: ids, start_date_time: new Date().toISOString(), end_date_time: end.toISOString() },
+      })
+      return Object.values(r.response || {})
+        .flatMap((c) => c.events || [])
+        .sort((a, b) => String(a.start).localeCompare(String(b.start)))
+        .slice(0, 5)
+        .map((e) => {
+          const allDay = !String(e.start).includes('T')
+          const at = allDay ? '' : new Date(e.start).toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: TZ }).replace(':00', '').replace(' ', '')
+          return { spoken: at ? `${e.summary} at ${at}` : e.summary, shown: at ? `${at} ${e.summary}` : e.summary }
+        })
+    } catch {
+      return []
+    }
+  }
 
   // The next time night mode ends (nightEnd o'clock, in the house's time zone).
   function nextMorning() {
@@ -716,6 +839,7 @@
     {#key settingsKey}
       <Settings
         {areas}
+        {calendars}
         {adminToken}
         onClose={closeSettings}
         onUnlock={() => (showPin = true)}
