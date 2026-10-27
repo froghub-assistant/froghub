@@ -7,6 +7,7 @@ let port = null
 // GeckoActivity sends the settings when the port opens and after every change, since getSettings() has to answer
 // at once and messages to the app can't.
 let settings = '{}'
+let nativeMic = false // whether the app records the mic for the page (Android 5, where GeckoView can't)
 
 function send(message) {
   if (port) port.postMessage(message)
@@ -15,6 +16,7 @@ function send(message) {
 port = browser.runtime.connectNative('froghub')
 port.onMessage.addListener((message) => {
   if (message.settings) settings = message.settings
+  if ('nativeMic' in message) nativeMic = message.nativeMic
   if (message.call) {
     // GeckoActivity calling a function of the page's, such as frogHubDlna(state)
     const f = window.wrappedJSObject[message.call]
@@ -34,4 +36,8 @@ window.wrappedJSObject.FrogHubApp = cloneInto({
   stopDlna: () => send({ type: 'stopDlna' }),
   duckDlna: (on) => send({ type: 'duckDlna', on: !!on }),
   stopDlnaPlayback: () => send({ type: 'stopDlnaPlayback' }),
+  // mic.js: 16 kHz PCM from the app, to window.frogHubPcm(base64)
+  nativeMic: () => nativeMic,
+  startMic: () => send({ type: 'startMic' }),
+  stopMic: () => send({ type: 'stopMic' }),
 }, window, { cloneFunctions: true })

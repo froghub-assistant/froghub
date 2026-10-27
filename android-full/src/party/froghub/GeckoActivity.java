@@ -2,6 +2,7 @@ package party.froghub;
 
 import android.Manifest;
 import android.net.Uri;
+import android.os.Build;
 import android.util.Log;
 import android.view.View;
 
@@ -35,6 +36,9 @@ public class GeckoActivity extends DisplayActivity {
     private WebExtension.Port port; // the open Frog Hub page's end of the bridge
     private GeckoSession.PermissionDelegate.Callback pendingMic; // Gecko waiting on Android's own mic prompt
     private boolean canGoBack;
+    // Android 5: the app records the mic for the page, since GeckoView can't there (see NativeMic)
+    private final boolean nativeMic = Build.VERSION.SDK_INT < 23;
+    private NativeMic mic;
     private String pageUrl;
 
     @Override
@@ -191,7 +195,9 @@ public class GeckoActivity extends DisplayActivity {
 
                 @Override
                 public void onDisconnect(WebExtension.Port p) {
-                    if (p == port) port = null;
+                    if (p != port) return;
+                    port = null;
+                    if (mic != null) mic.stop(); // the page has gone (reloaded, or another address)
                 }
             });
             sendSettings();
@@ -222,6 +228,14 @@ public class GeckoActivity extends DisplayActivity {
             case "stopDlnaPlayback":
                 stopDlnaPlayback();
                 break;
+            case "startMic":
+                if (!nativeMic) break;
+                if (mic == null) mic = new NativeMic(pcm -> callPage("frogHubPcm", JSONObject.quote(pcm)));
+                mic.start();
+                break;
+            case "stopMic":
+                if (mic != null) mic.stop();
+                break;
             default:
                 break;
         }
@@ -229,7 +243,7 @@ public class GeckoActivity extends DisplayActivity {
 
     private void sendSettings() {
         try {
-            if (port != null) port.postMessage(new JSONObject().put("settings", settingsJson()));
+            if (port != null) port.postMessage(new JSONObject().put("settings", settingsJson()).put("nativeMic", nativeMic));
         } catch (JSONException e) {
             // can't happen with a string
         }
@@ -280,6 +294,7 @@ public class GeckoActivity extends DisplayActivity {
 
     @Override
     protected void pageDestroy() {
+        if (mic != null) mic.stop();
         session.close();
     }
 }
