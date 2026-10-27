@@ -1,0 +1,69 @@
+// Frog Hub's "full" display app (froghub-full.apk): android/'s app with Firefox's engine, GeckoView, bundled in, for
+// tablets whose own WebView is too old for parts of Frog Hub (such as being a Music Assistant speaker over Sendspin).
+// It shares android/'s code and icons; only the activity that shows the page is its own (GeckoActivity). Unlike
+// android/ it needs Gradle, for GeckoView and its dependencies: `gradle assembleRelease` (CI builds it).
+plugins {
+    id 'com.android.application' version '8.13.2'
+}
+
+// The same version as the WebView app: one release has both
+def appManifest = file('../android/AndroidManifest.xml').text
+def releaseKey = System.getenv('KEYSTORE')
+
+android {
+    namespace 'party.froghub'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'party.froghub.full' // installs alongside the WebView app, not over it
+        minSdk 22 // Fire OS 5
+        targetSdk 36
+        versionCode((appManifest =~ /android:versionCode="(\d+)"/)[0][1] as int)
+        versionName((appManifest =~ /android:versionName="([^"]+)"/)[0][1])
+    }
+
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+            java {
+                srcDirs = ['src', '../android/src']
+                // The WebView activity, and its fix for old WebViews' certificates (GeckoView has its own)
+                exclude 'party/froghub/MainActivity.java', 'party/froghub/IsrgTrust.java'
+            }
+            res.srcDirs = ['../android/res']
+            assets.srcDirs = ['assets']
+        }
+    }
+
+    // The release key in CI (KEYSTORE, KS_PASS, as android/build.sh takes them), else the SDK's debug key
+    signingConfigs {
+        release {
+            storeFile file(releaseKey ?: "${System.getProperty('user.home')}/.android/debug.keystore")
+            storePassword System.getenv('KS_PASS') ?: 'android'
+            keyAlias releaseKey ? 'froghub' : 'androiddebugkey'
+            keyPassword System.getenv('KS_PASS') ?: 'android'
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    lint {
+        checkReleaseBuilds false
+    }
+}
+
+dependencies {
+    // GeckoView 143 is the last one for Android 5 and 6 (144 needs Android 8). Only 32-bit ARM, as on Fire tablets.
+    implementation('org.mozilla.geckoview:geckoview-armeabi-v7a:143.0.20251003115653') {
+        exclude group: 'com.google.android.gms' // passkeys through Play services: none on Fire tablets
+    }
+}
