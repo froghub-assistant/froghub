@@ -1,7 +1,8 @@
 <script>
-  // How many "Hey Verity" wake word recordings each person has made (Settings → 🎙️ on a display), towards retraining.
+  // How many "Hey Verity" wake word recordings each person has made (Settings → Record voices on a display), towards retraining.
   import { onMount } from 'svelte'
   import { api } from './api.svelte.js'
+  import { Mic } from '@lucide/svelte'
 
   const GOAL = { wake: 40, other: 20 }
   let counts = $state(null)
@@ -17,11 +18,11 @@
 </script>
 
 <section class="card">
-  <h2>🎙️ "Hey Verity" recordings</h2>
+  <h2><Mic size={22} /> "Hey Verity" recordings</h2>
   {#if error}<p class="error">{error}</p>{/if}
   {#if counts}
     {#if !Object.keys(counts).length}
-      <p class="muted">No recordings yet. On a Frog Hub: Settings (admin mode) → 🎙️ Record voices.</p>
+      <p class="muted">No recordings yet. On a Frog Hub: Settings (admin mode) → Record voices.</p>
     {:else}
       {#each Object.entries(counts) as [who, c] (who)}
         <div class="person">

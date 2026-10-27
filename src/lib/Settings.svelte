@@ -4,6 +4,7 @@
   import Recorder from './Recorder.svelte'
   import { POLICY } from './policy.js'
   import { SLEEP_SOUNDS, playAudio, stopAudio } from './player.svelte.js'
+  import { Key, Mic, Moon, Play, RefreshCw, Settings as Gear, Shield, Sparkles, User } from '@lucide/svelte'
 
   let { areas = [], adminToken = null, onClose, onUnlock, onWelcome } = $props()
 
@@ -29,7 +30,7 @@
   }
   let saving = $state('')
   let recording = $state(false) // the wake word recorder is open
-  let trying = null // the goodnight sound's ▶, while it plays
+  let trying = null // the goodnight sound's Hear it, while it plays
 
   function trySound() {
     clearTimeout(trying)
@@ -79,10 +80,10 @@
 </script>
 
 <div class="settings">
-  <h1>⚙️ Settings</h1>
+  <h1><Gear size={30} /> Settings</h1>
 
   {#if !adminToken}
-    <button class="secondary small fetch" onclick={onUnlock}>🔑 Copy everything from the other Frog Hubs (needs the PIN)</button>
+    <button class="secondary small fetch" onclick={onUnlock}><Key size={16} /> Copy everything from the other Frog Hubs (needs the PIN)</button>
   {/if}
 
   <label>
@@ -110,12 +111,12 @@
   </label>
 
   <label>This display's name <input bind:value={draft.deviceName} placeholder="its room's name" maxlength="40" /></label>
-  <p class="note">What the other Frog Hubs call it when you send a 📢 message to just this one.</p>
+  <p class="note">What the other Frog Hubs call it when you send a message to just this one.</p>
 
   <label>Night mode from <input type="number" min="0" max="23" bind:value={draft.nightStart} /> to <input type="number" min="0" max="23" bind:value={draft.nightEnd} /> o'clock</label>
 
   <details>
-    <summary>🌙 Goodnight</summary>
+    <summary><Moon size={18} /> Goodnight</summary>
     <p class="note">When someone says goodnight to this display (or a grown-up schedules it), once it has said goodnight:</p>
     <label>
       The room's lights
@@ -137,7 +138,7 @@
     </label>
     {#if draft.goodnightSound !== 'none'}
       <label>For <input type="number" min="5" max="180" bind:value={draft.goodnightMinutes} /> minutes, then it fades out</label>
-      <button class="secondary small" onclick={trySound}>▶ Hear it</button>
+      <button class="secondary small" onclick={trySound}><Play size={14} /> Hear it</button>
     {/if}
     <p class="note">Then the screen stays dark and quiet until night mode ends in the morning, or until someone talks to it.</p>
   </details>
@@ -158,21 +159,21 @@
 
   {#if adminToken && policy}
     <details>
-      <summary>🛡️ What the assistant can use</summary>
+      <summary><Shield size={18} /> What the assistant can use</summary>
       {#each POLICY as [key, text] (key)}
         <label class="check"><input type="checkbox" bind:checked={policy[key]} /> {text}</label>
       {/each}
       <p class="note">These apply to every Frog Hub. Turning off web search or memory restarts the assistant.</p>
     </details>
     {#if grownUps !== null}
-      <label class="check"><input type="checkbox" bind:checked={grownUps} /> 🧑 Grown-ups display</label>
+      <label class="check"><input type="checkbox" bind:checked={grownUps} /> <User size={16} /> Grown-ups display</label>
       <p class="note">
         Just this Frog Hub: the assistant talks to it like a grown-up, without the kids' rules. Leave it off on children's displays.
         Memories and messages to the other Frog Hubs still stay suitable for children.
       </p>
     {/if}
-    <button class="secondary small" onclick={onWelcome}>✨ Show the welcome again</button>
-    <button class="secondary small" onclick={() => (recording = true)}>🎙️ Record voices for the "Hey Verity" wake word</button>
+    <button class="secondary small" onclick={onWelcome}><Sparkles size={16} /> Show the welcome again</button>
+    <button class="secondary small" onclick={() => (recording = true)}><Mic size={16} /> Record voices for the "Hey Verity" wake word</button>
   {/if}
 
   {#if recording}
@@ -191,7 +192,7 @@
   {/if}
 
   <div class="buttons">
-    <button class="secondary reload" onclick={() => location.reload()}>🔄 Reload</button>
+    <button class="secondary reload" onclick={() => location.reload()}><RefreshCw size={16} /> Reload</button>
     <button class="secondary" onclick={() => onClose(false)}>Cancel</button>
     <button class="primary" onclick={save} disabled={!!saving}>{saving || 'Save'}</button>
   </div>

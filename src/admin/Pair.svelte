@@ -2,6 +2,7 @@
   // Pair a new display (channel/pair.ts): its welcome shows a QR code of <site>/admin/#pair=<code>, which opens this
   // with the code filled in; or type the code it shows.
   import { api } from './api.svelte.js'
+  import { Check, Smartphone } from '@lucide/svelte'
 
   let { code = '' } = $props()
   // svelte-ignore state_referenced_locally (a starting value to edit)
@@ -27,7 +28,7 @@
 </script>
 
 <section class="card" class:asked={code && !done}>
-  <h2>📱 Pair a new display</h2>
+  <h2><Smartphone size={22} /> Pair a new display</h2>
   {#if code && !done}
     <p>A display is asking to join with code <b class="code">{code}</b>. Check it matches the one on its screen, then:</p>
   {/if}
@@ -35,7 +36,7 @@
     <input bind:value={typed} placeholder="Code on the display's screen" maxlength="8" autocapitalize="characters" autocomplete="off" />
     <button class="primary" disabled={busy || typed.trim().length < 8}>{busy ? 'Pairing…' : 'Pair it'}</button>
   </form>
-  {#if done}<p class="ok">✓ Paired {done}. It copies the connection and settings now.</p>{/if}
+  {#if done}<p class="ok"><Check size={18} /> Paired {done}. It copies the connection and settings now.</p>{/if}
   {#if error}<p class="error">{error}</p>{/if}
 </section>
 

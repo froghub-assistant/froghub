@@ -1,8 +1,10 @@
 <script>
   // Buttons for the lights, switches, fans and media players in one HA area.
+  import { Fan, Lightbulb, Pause, Play, Plug, Power } from '@lucide/svelte'
+
   let { states, entities, onToggle, onMedia } = $props()
 
-  const icons = { light: '💡', switch: '🔌', fan: '🌀', media_player: '🔊' }
+  const icons = { light: Lightbulb, switch: Plug, fan: Fan }
 
   function title(id) {
     const s = states[id]
@@ -17,13 +19,14 @@
     {#if s && s.state !== 'unavailable'}
       {#if domain === 'media_player'}
         <button class="tile media" class:on={s.state === 'playing'} onclick={() => onMedia(id)}>
-          <span class="icon">{s.state === 'playing' ? '⏸️' : '▶️'}</span>
+          <span class="icon">{#if s.state === 'playing'}<Pause size={26} />{:else}<Play size={26} />{/if}</span>
           <span class="name">{title(id)}</span>
           <span class="sub">{s.attributes.media_title || s.state}</span>
         </button>
       {:else}
+        {@const Icon = icons[domain] || Power}
         <button class="tile" class:on={s.state === 'on'} onclick={() => onToggle(id)}>
-          <span class="icon">{icons[domain] || '⚙️'}</span>
+          <span class="icon"><Icon size={26} /></span>
           <span class="name">{title(id)}</span>
           <span class="sub">{s.state === 'on' ? 'On' : 'Off'}</span>
         </button>
@@ -58,7 +61,7 @@
     color: var(--bg);
   }
   .icon {
-    font-size: 26px;
+    display: flex;
   }
   .name {
     font-weight: 700;

@@ -3,6 +3,7 @@
   import { onMount } from 'svelte'
   import { api } from './api.svelte.js'
   import { POLICY } from '../lib/policy.js'
+  import { ListTodo, Shield } from '@lucide/svelte'
 
   let policy = $state(null)
   let note = $state('')
@@ -59,7 +60,7 @@
 </script>
 
 <section class="card">
-  <h2>🛡️ What the assistant can use</h2>
+  <h2><Shield size={22} /> What the assistant can use</h2>
   {#if policy}
     <ul class="list">
       {#each POLICY as [key, text] (key)}
@@ -83,7 +84,7 @@
 </section>
 
 <section class="card">
-  <h2>📝 Lists it can use</h2>
+  <h2><ListTodo size={22} /> Lists it can use</h2>
   {#if lists}
     {#if lists.length}
       <ul class="list">

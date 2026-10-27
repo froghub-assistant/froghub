@@ -4,6 +4,7 @@
   import { onDestroy } from 'svelte'
   import { startMic } from './mic.js'
   import { tapMic } from './assist.svelte.js'
+  import { Mic } from '@lucide/svelte'
 
   let { adminToken, name = '', onClose } = $props()
 
@@ -89,7 +90,7 @@
       if (r.error) throw new Error(r.error)
       counts = r.counts
       turn++
-      note = '✅ Got it!'
+      note = 'Got it!'
     } catch (err) {
       note = `Couldn't save it: ${err.message}`
     }
@@ -99,7 +100,7 @@
 </script>
 
 <div class="recorder">
-  <h1>🎙️ Teach Verity your voice</h1>
+  <h1><Mic size={30} /> Teach Verity your voice</h1>
   <p class="note">
     These recordings stay on the server and are only used to train the "Hey Verity" wake word. Each person: about 40 of
     "Hey Verity" and 20 of other things.

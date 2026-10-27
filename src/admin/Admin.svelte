@@ -11,15 +11,16 @@
   import History from './History.svelte'
   import Voices from './Voices.svelte'
   import Pair from './Pair.svelte'
+  import { AlarmClock, Brain, Lock, Megaphone, Mic, ScrollText, Shield, Tablet } from '@lucide/svelte'
 
   const TABS = [
-    ['displays', '📺', 'Displays', Displays],
-    ['announce', '📢', 'Announce', Announce],
-    ['alarms', '⏰', 'Alarms', Alarms],
-    ['assistant', '🛡️', 'Assistant', Assistant],
-    ['memory', '🧠', 'Memory', Memory],
-    ['history', '📜', 'History', History],
-    ['voices', '🎙️', 'Voices', Voices],
+    ['displays', Tablet, 'Displays', Displays],
+    ['announce', Megaphone, 'Announce', Announce],
+    ['alarms', AlarmClock, 'Alarms', Alarms],
+    ['assistant', Shield, 'Assistant', Assistant],
+    ['memory', Brain, 'Memory', Memory],
+    ['history', ScrollText, 'History', History],
+    ['voices', Mic, 'Voices', Voices],
   ]
   // A display's pairing QR code opens #pair=<code>: show it on the Displays tab
   const pairCode = (location.hash.match(/^#pair=([A-Za-z0-9]{8})$/) || [])[1] || ''
@@ -30,17 +31,17 @@
 
 {#if !session.token}
   <div class="login">
-    <h1>🐸 Frog Hub Admin</h1>
+    <h1><img class="logo" src="/favicon.svg" alt="" /> Frog Hub Admin</h1>
     <PinPad onUnlock={signIn} onCancel={() => {}} />
   </div>
 {:else}
   <header>
-    <h1>🐸 Frog Hub Admin</h1>
-    <button class="ghost" onclick={signOut}>🔒 Lock</button>
+    <h1><img class="logo" src="/favicon.svg" alt="" /> Frog Hub Admin</h1>
+    <button class="ghost" onclick={signOut}><Lock size={16} /> Lock</button>
   </header>
   <nav>
-    {#each TABS as [id, emoji, label] (id)}
-      <button class:on={tab === id} onclick={() => (tab = id)}><span>{emoji}</span>{label}</button>
+    {#each TABS as [id, Icon, label] (id)}
+      <button class:on={tab === id} onclick={() => (tab = id)}><Icon size={18} />{label}</button>
     {/each}
   </nav>
   <main>
@@ -50,6 +51,11 @@
 {/if}
 
 <style>
+  .logo {
+    width: 1.1em;
+    height: 1.1em;
+    vertical-align: -0.15em;
+  }
   .login h1 {
     position: fixed;
     top: 24px;

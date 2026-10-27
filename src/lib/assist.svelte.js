@@ -11,7 +11,7 @@ export const voice = $state({
   reply: '', // what the assistant said
   error: '',
   wakeWord: '',
-  muted: false, // the microphone is switched off (the 🎙️ button): no wake word, nothing heard or sent
+  muted: false, // the microphone is switched off (the microphone button): no wake word, nothing heard or sent
 })
 
 const FOLLOW_UP_WINDOW = 5 * 60 * 1000 // keep the same conversation for 5 minutes
@@ -107,7 +107,7 @@ export function stopVoice() {
   voice.status = 'off'
 }
 
-/** The 🎙️ button (or the admin page): off closes the microphone itself, so nothing is heard or sent until it's back on.
+/** The microphone button (or the admin page): off closes the microphone itself, so nothing is heard or sent until it's back on.
  * Replies to typed questions, announcements and alarms still sound. */
 export async function setMicMuted(on) {
   muted = voice.muted = !!on

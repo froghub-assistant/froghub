@@ -3,8 +3,9 @@
   import { onMount } from 'svelte'
   import { api } from './api.svelte.js'
   import { house } from '../lib/house.svelte.js'
+  import { Brain, CalendarClock, Megaphone, MessageCircle, ScrollText } from '@lucide/svelte'
 
-  const KINDS = { ask: '💬', 'admin-page': '🧠', announcement: '📢', scheduled: '🗓️' }
+  const KINDS = { ask: MessageCircle, 'admin-page': Brain, announcement: Megaphone, scheduled: CalendarClock }
   const WHERE = { 'admin-page': 'Admin page', announcement: 'Announcement', scheduled: 'Scheduled job' }
   let items = $state(null)
   let more = $state(false)
@@ -74,7 +75,7 @@
 
 <section class="card">
   <div class="top">
-    <h2>📜 Questions and answers</h2>
+    <h2><ScrollText size={22} /> Questions and answers</h2>
     <button class="ghost" onclick={() => load()}>Refresh</button>
   </div>
   {#if logging !== null}
@@ -96,8 +97,9 @@
   {:else}
     <ul class="log">
       {#each shown as e (e.at + e.text)}
+        {@const Kind = KINDS[e.kind] || MessageCircle}
         <li>
-          <small>{KINDS[e.kind] || '💬'} {when(e.at)} · {where(e)}{e.ms ? ` · ${(e.ms / 1000).toFixed(1)} s` : ''}</small>
+          <small><Kind size={14} /> {when(e.at)} · {where(e)}{e.ms ? ` · ${(e.ms / 1000).toFixed(1)} s` : ''}</small>
           <p class="q">{e.text}</p>
           {#if e.error}
             <p class="error">Failed: {e.error}</p>

@@ -15,6 +15,11 @@ Object.assign(settings, {
   deviceId: 'demo', micMuted: true, nightStart: 0, nightEnd: 0,
 })
 saveSettings()
+try {
+  localStorage.removeItem('froghub-sleep') // a goodnight from an earlier visit would keep it dark until midnight
+} catch {
+  // storage blocked: nothing kept anyway
+}
 
 // The display fills the window below the demo's bar. The transform makes #app what its full-screen (position: fixed)
 // parts fill, instead of the whole window.

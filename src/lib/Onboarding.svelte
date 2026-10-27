@@ -5,6 +5,7 @@
   import { fly, fade, scale } from 'svelte/transition'
   import { backOut } from 'svelte/easing'
   import Face from './Face.svelte'
+  import { Check, Hand, Heart, House, Keyboard, Mic, PartyPopper, Smartphone, Sparkles, Star, TabletSmartphone, User, Zap } from '@lucide/svelte'
   import PinPad from './PinPad.svelte'
   import { HomeAssistant } from './ha.js'
   import { startMic } from './mic.js'
@@ -214,7 +215,8 @@
   }
 
   const confetti = Array.from({ length: 36 }, (_, i) => ({
-    emoji: ['🎉', '✨', '🐸', '💛', '⭐', '🎈'][i % 6],
+    Icon: [PartyPopper, Sparkles, Star, Heart, Zap, Star][i % 6],
+    colour: ['#ffd23f', '#ff7eb6', '#5bd16b', '#6ec6ff', '#ffa94d', '#c792ea'][i % 6],
     left: Math.random() * 100,
     delay: Math.random() * 1.2,
     spin: Math.random() * 720 - 360,
@@ -256,7 +258,7 @@
         <div class="hero bob">
           <Face kind="frog" fill={personalities.frog.colours.faceFill} ink={personalities.frog.colours.faceInk} size={200} />
         </div>
-        <h1 class="big">Hello! 👋</h1>
+        <h1 class="big">Hello! <Hand size={44} /></h1>
         <p class="lead">I'm <b>Frog Hub</b>, your new smart display. Let's get me set up, it only takes a minute.</p>
         <button class="primary" onclick={() => go('connect')}>Let's go →</button>
 
@@ -272,24 +274,24 @@
         {:else if !manual}
           <div class="cards">
             <button class="card" onclick={startPairing} disabled={checking}>
-              <span class="emoji">📱</span>
+              <span class="emoji"><Smartphone size={48} /></span>
               <b>Yes! Scan with a phone</b>
               <small>A grown-up scans a code with their phone, so nobody types on me</small>
             </button>
             <button class="card" onclick={() => ((pinFor = 'copy'), (showPin = true))} disabled={checking}>
-              <span class="emoji">🐸🐸</span>
+              <span class="emoji"><TabletSmartphone size={48} /></span>
               <b>Yes! Copy everything</b>
               <small>A grown-up types the PIN and I'll copy the connection and settings from the others</small>
             </button>
             <button class="card" onclick={() => (manual = true)} disabled={checking}>
-              <span class="emoji">🏠</span>
+              <span class="emoji"><House size={48} /></span>
               <b>No, I'm the first</b>
               <small>Type in Home Assistant's address and a long-lived access token</small>
             </button>
           </div>
         {:else}
           {#if draft.haUrl && !draft.token}
-            <button class="primary" onclick={logIn} disabled={checking}>🏠 Log in with Home Assistant</button>
+            <button class="primary" onclick={logIn} disabled={checking}><House size={20} /> Log in with Home Assistant</button>
             <p class="note">Log in as the person (or the Frog Hub user) whose rooms and devices this display should use.
               Or use a long-lived access token:</p>
           {/if}
@@ -301,14 +303,14 @@
             </label>
           </div>
           <button class="primary" onclick={tryConnection} disabled={checking || !draft.token || connected}>
-            {connected ? '✓ Connected!' : checking ? 'Checking…' : 'Connect'}
+            {#if connected}<Check size={20} /> Connected!{:else}{checking ? 'Checking…' : 'Connect'}{/if}
           </button>
         {/if}
         {#if !checking && !connected && !pairing}
           <button class="link" onclick={skipHa}>Skip: use it without Home Assistant</button>
         {/if}
         {#if checking && !manual}<p class="note">Connecting…</p>{/if}
-        {#if connected && !manual}<p class="ok" in:scale={{ easing: backOut }}>✓ Connected!</p>{/if}
+        {#if connected && !manual}<p class="ok" in:scale={{ easing: backOut }}><Check size={22} /> Connected!</p>{/if}
         {#if connectNote}<p class="warn">{connectNote}</p>{/if}
 
       {:else if step === 'personality'}
@@ -355,7 +357,7 @@
           <button class="toggle" class:on={grownUps} onclick={toggleGrownUps}>
             <span class="knob"></span>
             <span>
-              <b>🧑 Grown-up mode</b>
+              <b><User size={18} /> Grown-up mode</b>
               <small>For a display only grown-ups use: no kids' rules. Needs the PIN{adminToken ? '' : ' (a grown-up types it)'}.</small>
             </span>
           </button>
@@ -369,12 +371,12 @@
         </div>
         <div class="meter"><span style="width: {level * 100}%"></span></div>
         {#if heard}
-          <p class="ok" in:scale={{ easing: backOut }}>✓ Loud and clear</p>
+          <p class="ok" in:scale={{ easing: backOut }}><Check size={22} /> Loud and clear</p>
           <button class="primary" onclick={() => go('done')}>Next →</button>
         {:else if mic}
           <p class="lead">Say hello to me!</p>
         {:else}
-          <button class="primary" onclick={startListening}>🎙️ Turn on the microphone</button>
+          <button class="primary" onclick={startListening}><Mic size={20} /> Turn on the microphone</button>
           <button class="link" onclick={() => go('done')}>Skip for now</button>
         {/if}
         {#if micNote}<p class="warn">{micNote}</p>{/if}
@@ -382,15 +384,15 @@
       {:else if step === 'done'}
         <div class="confetti" aria-hidden="true">
           {#each confetti as c, i (i)}
-            <span style="left: {c.left}%; animation-delay: {c.delay}s; animation-duration: {c.duration}s; --spin: {c.spin}deg">{c.emoji}</span>
+            <span style="left: {c.left}%; animation-delay: {c.delay}s; animation-duration: {c.duration}s; --spin: {c.spin}deg"><c.Icon size={30} color={c.colour} /></span>
           {/each}
         </div>
         <div class="hero bob">
           <Face kind={p.face} fill={p.colours.faceFill} ink={p.colours.faceInk} size={190} mood="speaking" />
         </div>
-        <h1 class="big">All set, {draft.name}! 🎉</h1>
+        <h1 class="big">All set, {draft.name}! <PartyPopper size={44} /></h1>
         {#if noHa}
-          <p class="lead">Tap ⌨️ to type to me. To talk out loud, add Home Assistant later in Settings.</p>
+          <p class="lead">Tap <Keyboard size={22} /> to type to me. To talk out loud, add Home Assistant later in Settings.</p>
         {:else}
           <p class="lead">Tap my face to talk to me, or just say the wake word.</p>
         {/if}
@@ -530,7 +532,9 @@
     font-size: 15px;
   }
   .emoji {
-    font-size: 48px;
+    display: flex;
+    justify-content: center;
+    color: var(--accent);
   }
   .form {
     display: flex;

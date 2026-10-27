@@ -12,3 +12,9 @@ body {
 button {
   cursor: pointer;
 }
+
+/* Lucide icons (@lucide/svelte) sit on the middle of the text beside them */
+.lucide {
+  flex: none;
+  vertical-align: middle;
+}

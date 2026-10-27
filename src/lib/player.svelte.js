@@ -22,7 +22,7 @@ const apply = () => {
   if (noise) noise.gain.gain.value = volume * noise.loudness
 }
 
-export const SLEEP_SOUNDS = { rain: '🌧️ Rain', waves: '🌊 Waves', 'white noise': '🌫️ White noise' }
+export const SLEEP_SOUNDS = { rain: 'Rain', waves: 'Waves', 'white noise': 'White noise' }
 
 // Some seconds of noise, looped: white, pink (rain) or brown (waves). The end is cross-faded into the start, so the
 // loop has no click.

@@ -4,6 +4,7 @@
   import { onMount } from 'svelte'
   import { api, ago } from './api.svelte.js'
   import { house } from '../lib/house.svelte.js'
+  import { Brain } from '@lucide/svelte'
 
   let files = $state(null)
   let open = $state('') // the memory shown in full
@@ -44,7 +45,7 @@
 </script>
 
 <section class="card">
-  <h2>🧠 Ask it to remember something</h2>
+  <h2><Brain size={22} /> Ask it to remember something</h2>
   <form onsubmit={ask}>
     <textarea bind:value={request} rows="3" maxlength="1000" disabled={asking}
       placeholder={`House rule: bedtime is 8pm on school nights\n${house.kids[0] || 'Sam'}'s favourite animal is now the axolotl\nForget the thing about the spelling test`}></textarea>

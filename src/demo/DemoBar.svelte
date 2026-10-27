@@ -1,6 +1,7 @@
 <script>
   // The demo's strip of things to try: each one is asked as if it had been typed to the display.
   import { askText, voice } from '../lib/assist.svelte.js'
+  import { FlaskConical } from '@lucide/svelte'
 
   const TRY = ['Tell me a joke', 'Turn off the lights', 'Set a timer for 10 seconds', "What's the weather?", 'What is 7 times 8?', 'Tell me a story', 'Goodnight']
   let note = $state('')
@@ -13,7 +14,7 @@
 </script>
 
 <aside bind:clientHeight={height}>
-  <span class="label">🐸 Demo: a pretend bedroom, nothing real. Try</span>
+  <span class="label"><FlaskConical size={16} /> Demo: a pretend bedroom, nothing real. Try</span>
   {#each TRY as t (t)}<button onclick={() => ask(t)}>{t}</button>{/each}
   <span class="label">or tap the frog to type.</span>
   {#if note}<span class="note">{note}</span>{/if}

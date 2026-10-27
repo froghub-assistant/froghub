@@ -3,6 +3,7 @@
   import { onMount } from 'svelte'
   import { api } from './api.svelte.js'
   import { house } from '../lib/house.svelte.js'
+  import { AlarmClock, Timer } from '@lucide/svelte'
 
   const REPEATS = [['once', 'Once'], ['daily', 'Every day'], ['weekdays', 'School days (Mon–Fri)'], ['weekends', 'Weekends']]
   let alarms = $state(null)
@@ -54,8 +55,8 @@
   <h2>Set</h2>
   <form onsubmit={add}>
     <div class="seg">
-      <button type="button" class:on={kind === 'alarm'} onclick={() => (kind = 'alarm')}>⏰ Alarm</button>
-      <button type="button" class:on={kind === 'timer'} onclick={() => (kind = 'timer')}>⏲️ Timer</button>
+      <button type="button" class:on={kind === 'alarm'} onclick={() => (kind = 'alarm')}><AlarmClock size={16} /> Alarm</button>
+      <button type="button" class:on={kind === 'timer'} onclick={() => (kind = 'timer')}><Timer size={16} /> Timer</button>
     </div>
     <div class="cols">
       {#if kind === 'alarm'}
@@ -85,7 +86,7 @@
     <ul class="list">
       {#each alarms as a (a.id)}
         <li>
-          <span class="icon">{a.timer ? '⏲️' : '⏰'}</span>
+          <span class="icon">{#if a.timer}<Timer size={22} />{:else}<AlarmClock size={22} />{/if}</span>
           <span class="what">
             <b>{a.label}</b>
             <small>{a.timer ? `rings ${when(a.next)}` : `${a.time}${a.repeat && a.repeat !== 'once' ? ` · ${REPEATS.find((r) => r[0] === a.repeat)[1]}` : ''} · next ${when(a.next)}`}</small>
@@ -109,7 +110,8 @@
     gap: 12px;
   }
   .icon {
-    font-size: 22px;
+    display: flex;
+    color: var(--accent);
   }
   .what {
     flex: 1;

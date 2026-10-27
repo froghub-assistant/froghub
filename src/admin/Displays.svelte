@@ -6,6 +6,7 @@
   import { HomeAssistant } from '../lib/ha.js'
   import { personalities } from '../lib/personalities.js'
   import { house, houseLoaded } from '../lib/house.svelte.js'
+  import { Eraser, Hourglass, Mic, MicOff, Pencil, Sparkles, Trash2, User } from '@lucide/svelte'
 
   let list = $state(null)
   let error = $state('')
@@ -108,13 +109,13 @@
         <div class="top">
           <span class="dot" class:on={d.online} title={d.online ? 'On' : 'Off'}></span>
           <h2>{d.name}</h2>
-          {#if d.grownUps}<span class="badge">🧑 grown-up mode</span>{/if}
+          {#if d.grownUps}<span class="badge"><User size={14} /> grown-up mode</span>{/if}
         </div>
         <dl>
           <dt>For</dt><dd>{d.who || '—'}</dd>
           <dt>Room</dt><dd>{d.areaName || '—'}</dd>
           <dt>Personality</dt><dd><span class="swatch"></span>{p ? p.name : d.personality || '—'}</dd>
-          <dt>Microphone</dt><dd>{d.micMuted ? '🔇 off' : '🎙️ on'}</dd>
+          <dt>Microphone</dt><dd>{#if d.micMuted}<MicOff size={16} /> off{:else}<Mic size={16} /> on{/if}</dd>
           {#if d.volume !== undefined}<dt>Volume</dt><dd>{d.volume}%</dd>{/if}
           <dt>Last seen</dt><dd>{d.online ? 'on now' : ago(d.lastSeen)}</dd>
           <dt>First seen</dt><dd>{ago(d.firstSeen)}</dd>
@@ -123,7 +124,7 @@
 
         {#if d.pending}
           <p class="pending">
-            ⏳ Waiting to {pendingText(d.pending)}{d.online ? '…' : ' when it next turns on'}
+            <Hourglass size={16} /> Waiting to {pendingText(d.pending)}{d.online ? '…' : ' when it next turns on'}
             <button class="link" onclick={() => act(d.id, 'cancel')}>Cancel</button>
           </p>
         {/if}
@@ -143,7 +144,7 @@
             {/if}
             <label class="switch">
               <input type="checkbox" bind:checked={editing.grownUps} />
-              🧑 Grown-up mode (no kids' rules on this display)
+              <User size={16} /> Grown-up mode (no kids' rules on this display)
             </label>
             <label>
               Volume: {editing.volume}%
@@ -156,12 +157,12 @@
           </div>
         {:else}
           <div class="row">
-            <button class="ghost" onclick={() => (editing = { id: d.id, deviceName: d.name === d.areaName ? '' : d.name, name: d.who, area: d.area, grownUps: d.grownUps, volume: d.volume ?? 100 })}>✏️ Edit</button>
-            <button class="ghost" onclick={() => act(d.id, 'set', { set: { micMuted: !d.micMuted } })}>{d.micMuted ? '🎙️ Mic on' : '🔇 Mic off'}</button>
-            <button class="ghost" onclick={() => act(d.id, 'welcome')}>✨ Welcome</button>
-            <button class="danger" onclick={() => act(d.id, 'wipe')}>{arming === `wipe:${d.id}` ? 'Tap again to wipe' : '🧽 Wipe'}</button>
+            <button class="ghost" onclick={() => (editing = { id: d.id, deviceName: d.name === d.areaName ? '' : d.name, name: d.who, area: d.area, grownUps: d.grownUps, volume: d.volume ?? 100 })}><Pencil size={16} /> Edit</button>
+            <button class="ghost" onclick={() => act(d.id, 'set', { set: { micMuted: !d.micMuted } })}>{#if d.micMuted}<Mic size={16} /> Mic on{:else}<MicOff size={16} /> Mic off{/if}</button>
+            <button class="ghost" onclick={() => act(d.id, 'welcome')}><Sparkles size={16} /> Welcome</button>
+            <button class="danger" onclick={() => act(d.id, 'wipe')}>{#if arming === `wipe:${d.id}`}Tap again to wipe{:else}<Eraser size={16} /> Wipe{/if}</button>
             {#if !d.online}
-              <button class="danger" onclick={() => act(d.id, 'forget')}>{arming === `forget:${d.id}` ? 'Tap again to forget' : '🗑️ Forget'}</button>
+              <button class="danger" onclick={() => act(d.id, 'forget')}>{#if arming === `forget:${d.id}`}Tap again to forget{:else}<Trash2 size={16} /> Forget{/if}</button>
             {/if}
           </div>
         {/if}
@@ -169,8 +170,8 @@
     {/each}
   </div>
   <p class="muted small">
-    🧽 Wipe erases everything saved on that tablet and starts it again with the welcome, as a new display.
-    🗑️ Forget only removes it from this list (for a tablet that's gone for good); it reappears if it turns on again.
+    <b>Wipe</b> erases everything saved on that tablet and starts it again with the welcome, as a new display.
+    <b>Forget</b> only removes it from this list (for a tablet that's gone for good); it reappears if it turns on again.
   </p>
 {/if}
 

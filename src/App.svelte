@@ -13,6 +13,7 @@
   import { voice, startVoice, startTextOnly, stopVoice, setPersonality, tapToTalk, askText, sayUnasked, setMicMuted, setVolume } from './lib/assist.svelte.js'
   import { startAnnouncements, otherDisplays, sendMessage } from './lib/announce.js'
   import { player, playAudio, stopAudio, setAudioVolume, duck } from './lib/player.svelte.js'
+  import { AlarmClock, Hand, Keyboard, LockOpen, Maximize2, Megaphone, Mic, MicOff, Minimize2, Music, Settings as Gear, Square, Timer, TriangleAlert, Volume, Volume1, Volume2, X } from '@lucide/svelte'
 
   const WEATHER = {
     'clear-night': '🌙', cloudy: '☁️', fog: '🌫️', hail: '🌨️', lightning: '🌩️', 'lightning-rainy': '⛈️',
@@ -41,7 +42,7 @@
   let now = $state(new Date())
   let typing = $state(false) // the keyboard box is open
   let typed = $state('')
-  let messaging = $state(false) // the 📢 box is open
+  let messaging = $state(false) // the megaphone's message box is open
   let message = $state('')
   let messageTo = $state('') // a display id, or '' for all of them
   let messageTargets = $state([])
@@ -61,12 +62,12 @@
     volume: settings.volume,
     ready: setUp() && !showOnboarding, // the welcome finished
   })
-  let showVolume = $state(false) // the 🔊 button's slider
+  let showVolume = $state(false) // the speaker button's slider
 
   $effect(() => (setVolume(settings.volume), setAudioVolume(settings.volume)))
   $effect(() => duck(busy))
 
-  // The 🎙️ button: the microphone off (or on again), kept across restarts
+  // The microphone button: the microphone off (or on again), kept across restarts
   function toggleMic() {
     settings.micMuted = !settings.micMuted
     saveSettings()
@@ -280,7 +281,7 @@
       if (!deviceId) throw new Error(`${entityId} has no device`)
       await ha.callService('alexa_devices', 'send_text_command', { device_id: deviceId, text_command: `play ${query} on Spotify` })
     } catch (err) {
-      voice.reply += ` ⚠️ Couldn't start the music: ${err.message}`
+      voice.reply += ` (Couldn't start the music: ${err.message})`
     }
   }
 
@@ -421,7 +422,7 @@
     }
   }
 
-  // The 📢 button: type a message for the other displays (all of them, or one).
+  // The megaphone button: type a message for the other displays (all of them, or one).
   async function openMessaging() {
     messaging = !messaging
     typing = false
@@ -444,7 +445,7 @@
     const where = messageTo ? (messageTargets.find((d) => d.id === messageTo) || {}).name : 'everyone'
     message = ''
     messaging = false
-    voice.reply = `📢 Sent to ${where}!`
+    voice.reply = `Sent to ${where}!`
   }
 
   // Something a grown-up queued for this display on the admin page (channel/registry.ts).
@@ -539,7 +540,7 @@
     {:else}
       <p class="greeting">{p.greeting(settings.name)}</p>
       {#if DEMO}<p class="hint">Tap me to type, or pick something to try at the top.</p>
-      {:else if voice.muted && connection !== 'none'}<p class="hint">🔇 The microphone is off. Tap 🎙️ to turn it on, or tap me to type.</p>
+      {:else if voice.muted && connection !== 'none'}<p class="hint">The microphone is off. Tap the microphone button to turn it on, or tap me to type.</p>
       {:else if voice.wakeWord && voice.status === 'waiting'}<p class="hint">Say “{voice.wakeWord}” or tap me to talk</p>{/if}
       {#if voice.status === 'error'}<p class="hint">{voice.error}</p>{/if}
     {/if}
@@ -549,8 +550,8 @@
     {#if card}
       <div class="card" class:full={cardFull} onscroll={keepCard}>
         <div class="card-buttons">
-          <button onclick={() => ((cardFull = !cardFull), keepCard())} aria-label={cardFull ? 'Smaller' : 'Full screen'}>{cardFull ? '🗗' : '⛶'}</button>
-          <button onclick={() => (card = null)} aria-label="Close">✕</button>
+          <button onclick={() => ((cardFull = !cardFull), keepCard())} aria-label={cardFull ? 'Smaller' : 'Full screen'}>{#if cardFull}<Minimize2 size={22} />{:else}<Maximize2 size={22} />{/if}</button>
+          <button onclick={() => (card = null)} aria-label="Close"><X size={24} /></button>
         </div>
         {#if card.emoji}<div class="card-emoji">{card.emoji}</div>{/if}
         {#if card.title}<h2>{card.title}</h2>{/if}
@@ -584,50 +585,50 @@
     {/if}
   </section>
 
-  <button class="keyboard" onclick={() => ((typing = !typing), (messaging = false))} aria-label="Type to {p.name}">⌨️</button>
-  <button class="megaphone" onclick={openMessaging} aria-label="Send a message to the other Frog Hubs">📢</button>
+  <button class="keyboard" onclick={() => ((typing = !typing), (messaging = false))} aria-label="Type to {p.name}"><Keyboard size={30} /></button>
+  <button class="megaphone" onclick={openMessaging} aria-label="Send a message to the other Frog Hubs"><Megaphone size={30} /></button>
   {#if connection !== 'none' && !DEMO}
-    <button class="mic" class:muted={voice.muted} onclick={toggleMic} aria-label={voice.muted ? 'Turn the microphone on' : 'Turn the microphone off'}>{voice.muted ? '🔇' : '🎙️'}</button>
+    <button class="mic" class:muted={voice.muted} onclick={toggleMic} aria-label={voice.muted ? 'Turn the microphone on' : 'Turn the microphone off'}>{#if voice.muted}<MicOff size={30} />{:else}<Mic size={30} />{/if}</button>
   {/if}
-  <button class="speaker" class:low={connection === 'none' || DEMO} onclick={() => (showVolume = !showVolume)} aria-label="Volume">{settings.volume === 0 ? '🔈' : settings.volume < 50 ? '🔉' : '🔊'}</button>
+  <button class="speaker" class:low={connection === 'none' || DEMO} onclick={() => (showVolume = !showVolume)} aria-label="Volume">{#if settings.volume === 0}<Volume size={30} />{:else if settings.volume < 50}<Volume1 size={30} />{:else}<Volume2 size={30} />{/if}</button>
   {#if showVolume}
     <div class="volume" class:low={connection === 'none' || DEMO}>
       <input type="range" min="0" max="100" step="5" bind:value={settings.volume} onchange={saveSettings} aria-label="Volume" />
       <span>{settings.volume}%</span>
     </div>
   {/if}
-  <button class="gear" onclick={openSettings} aria-label="Settings">⚙️</button>
+  <button class="gear" onclick={openSettings} aria-label="Settings"><Gear size={24} /></button>
 
   {#if typing}
     <form class="typebox" onsubmit={sendTyped}>
       <!-- svelte-ignore a11y_autofocus -->
       <input bind:value={typed} placeholder="Type to {p.name}…" autofocus enterkeyhint="send" maxlength="500" />
       <button type="submit" disabled={!typed.trim() || busy}>Send</button>
-      <button type="button" class="close" onclick={() => (typing = false)} aria-label="Close">✕</button>
+      <button type="button" class="close" onclick={() => (typing = false)} aria-label="Close"><X size={20} /></button>
     </form>
   {/if}
 
   {#if messaging}
     <form class="typebox" onsubmit={sendMessageNow}>
       <select bind:value={messageTo} aria-label="Send to">
-        <option value="">📢 Everyone</option>
+        <option value="">Everyone</option>
         {#each messageTargets as d (d.id)}<option value={d.id}>{d.name}</option>{/each}
       </select>
       <!-- svelte-ignore a11y_autofocus -->
       <input bind:value={message} placeholder={messageNote || 'Message for the other Frog Hubs…'} autofocus enterkeyhint="send" maxlength="300" />
       <button type="submit" disabled={!message.trim()}>Send</button>
-      <button type="button" class="close" onclick={() => (messaging = false)} aria-label="Close">✕</button>
+      <button type="button" class="close" onclick={() => (messaging = false)} aria-label="Close"><X size={20} /></button>
     </form>
     {#if messageNote && messageNote !== 'Sending…'}<p class="message-note">{messageNote}</p>{/if}
   {/if}
 
   {#if adminToken}
-    <div class="admin">🔓 Admin mode <button onclick={lockAdmin}>Lock</button></div>
+    <div class="admin"><LockOpen size={16} /> Admin mode <button onclick={lockAdmin}>Lock</button></div>
   {/if}
   {#if player.playing || player.error}
     <div class="playing">
-      {player.playing ? `🎵 ${player.title}` : `⚠️ ${player.error}`}
-      {#if player.playing}<button onclick={stopAudio} aria-label="Stop">⏹</button>{:else}<button onclick={() => (player.error = '')} aria-label="Close">✕</button>{/if}
+      {#if player.playing}<Music size={18} /><span>{player.title}</span>{:else}<TriangleAlert size={18} /><span>{player.error}</span>{/if}
+      {#if player.playing}<button onclick={stopAudio} aria-label="Stop"><Square size={14} fill="currentColor" /></button>{:else}<button onclick={() => (player.error = '')} aria-label="Close"><X size={16} /></button>{/if}
     </div>
   {/if}
 
@@ -637,14 +638,15 @@
 
   {#if needsTap && !showSettings && !showOnboarding}
     <button class="tap" onclick={tapToStart}>
-      <span>👋 Tap once to wake {p.name} up</span>
+      <Hand size={44} />
+      <span>Tap once to wake {p.name} up</span>
       <small>(the browser needs one tap before it lets me use the microphone and speaker)</small>
     </button>
   {/if}
 
   {#if alarm.ringing}
     <div class="alarm">
-      <div class="alarm-icon">{alarm.ringing.timer ? '⏲️' : '⏰'}</div>
+      <div class="alarm-icon">{#if alarm.ringing.timer}<Timer size={90} />{:else}<AlarmClock size={90} />{/if}</div>
       <div class="alarm-label">{alarm.ringing.label}</div>
       <div class="alarm-time">{now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: TZ })}</div>
       <div class="alarm-buttons">
@@ -783,7 +785,13 @@
     text-overflow: ellipsis;
     transform: translateX(-50%);
   }
+  .playing span {
+    margin-left: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .playing button {
+    display: flex;
     margin-left: 10px;
     border: 0;
     border-radius: 999px;
@@ -814,6 +822,16 @@
     background: #fff;
     color: #c62828;
     font: inherit;
+  }
+  /* The round-the-edge buttons hold Lucide icons, drawn in the text colour */
+  .keyboard,
+  .megaphone,
+  .mic,
+  .speaker,
+  .gear {
+    display: flex;
+    padding: 4px;
+    color: var(--fg);
   }
   .keyboard {
     position: absolute;
@@ -932,6 +950,8 @@
     opacity: 0.4;
   }
   .typebox .close {
+    display: flex;
+    align-items: center;
     background: none;
     color: var(--fg);
   }
@@ -974,10 +994,11 @@
     background: var(--bg2);
   }
   .card-buttons button {
+    padding: 6px 8px;
     border: 0;
     background: none;
     color: var(--muted);
-    font-size: 24px;
+    line-height: 0;
   }
   .card-emoji {
     font-size: 64px;

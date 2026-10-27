@@ -1,5 +1,5 @@
 // Announcements: things said without anyone at this display asking (channel/announce.ts): from the server, another
-// display's 📢 button, or the assistant passing a message on. Polled every few seconds;
+// display's megaphone button, or the assistant passing a message on. Polled every few seconds;
 // only the ones made after this display started are played, so a reload doesn't repeat old news.
 
 const POLL_MS = 5000
@@ -42,7 +42,7 @@ export async function otherDisplays(myId) {
   }
 }
 
-/** Sends a message from this display (the 📢 button); to = a display id, or '' for all of them. Returns an error or ''. */
+/** Sends a message from this display (the megaphone button); to = a display id, or '' for all of them. Returns an error or ''. */
 export async function sendMessage(me, text, to) {
   try {
     const r = await (await fetch('/api/announce', {

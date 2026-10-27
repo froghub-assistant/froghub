@@ -17,7 +17,7 @@ const defaults = {
   deviceId: '', // this display's own random id (never synced), so messages can be sent to just it
   deviceName: '', // what it's called in those messages; '' = its room's name
   setUp: false, // the welcome was finished (displays from before it existed count as set up if they have an HA token)
-  micMuted: false, // the 🎙️ button: microphone off
+  micMuted: false, // the microphone button: microphone off
   volume: 100, // replies, announcements and alarms (alarms at least 20%)
   // The goodnight routine (channel/goodnight.ts), per display
   goodnightLights: 'off', // the room's lights: off, dim or leave

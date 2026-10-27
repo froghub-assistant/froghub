@@ -4,6 +4,7 @@
   import { api } from './api.svelte.js'
   import { personalities } from '../lib/personalities.js'
   import { house } from '../lib/house.svelte.js'
+  import { Megaphone } from '@lucide/svelte'
 
   let mode = $state('say') // say | prompt
   let text = $state('')
@@ -49,13 +50,13 @@
   <label>
     {mode === 'say' ? 'What should it say?' : 'What should it tell the room?'}
     <textarea bind:value={text} rows="3" maxlength={mode === 'say' ? 500 : 1000}
-      placeholder={mode === 'say' ? "Dinner's ready! 🍝" : `Tell ${house.kids[0] || 'Sam'} it is time to get ready for school, and show the weather`}></textarea>
+      placeholder={mode === 'say' ? "Dinner's ready!" : `Tell ${house.kids[0] || 'Sam'} it is time to get ready for school, and show the weather`}></textarea>
   </label>
   <div class="cols">
     <label>
       To
       <select bind:value={to}>
-        <option value="">📢 Every Frog Hub</option>
+        <option value="">Every Frog Hub</option>
         {#each displays as d (d.id)}<option value={d.name}>{d.name}</option>{/each}
       </select>
     </label>
@@ -70,7 +71,7 @@
     {/if}
   </div>
   <label class="check"><input type="checkbox" bind:checked={atNight} /> Speak it at night too (otherwise it's only shown during night hours)</label>
-  <button class="primary" disabled={sending || !text.trim()}>{sending ? (mode === 'prompt' ? 'Asking…' : 'Sending…') : '📢 Send'}</button>
+  <button class="primary" disabled={sending || !text.trim()}>{#if sending}{mode === 'prompt' ? 'Asking…' : 'Sending…'}{:else}<Megaphone size={18} /> Send{/if}</button>
   {#if result}<p class="ok">{result}</p>{/if}
   {#if error}<p class="error">{error}</p>{/if}
 </form>
