@@ -1,0 +1,30 @@
+# git-cliff (https://git-cliff.org): release notes from the Conventional Commits since the last release.
+# .github/workflows/android.yml uses it for the Android apps' releases (tags android-<app>-admin-<admin>).
+
+[changelog]
+header = ""
+body = """
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim }}
+{% for commit in commits %}
+- {% if commit.scope %}**{{ commit.scope }}:** {% endif %}{{ commit.message | upper_first }} ([{{ commit.id | truncate(length=7, end="") }}](https://github.com/froghub-assistant/froghub/commit/{{ commit.id }}))
+{%- endfor %}
+{% endfor %}
+"""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+commit_parsers = [
+  { message = "^feat", group = "<!-- 0 -->Features" },
+  { message = "^fix", group = "<!-- 1 -->Fixes" },
+  { message = "^perf", group = "<!-- 2 -->Faster" },
+  { message = "^docs", group = "<!-- 3 -->Documentation" },
+  { message = "^(ci|build)", group = "<!-- 4 -->Building and releasing" },
+  { message = "^(refactor|test|chore|style)", skip = true },
+]
+protect_breaking_commits = true
+tag_pattern = "^android-"
+sort_commits = "oldest"

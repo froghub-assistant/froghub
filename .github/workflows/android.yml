@@ -2,7 +2,7 @@
 # releases/latest/download/froghub.apk. Both are signed with the release key in ANDROID_KEYSTORE (base64 PKCS12) and
 # ANDROID_KEYSTORE_PASSWORD; every build has to use that key, or updates won't install over earlier ones.
 # The release's tag is named after both versions (android:versionName); building the same versions again replaces
-# its files.
+# its files. Its notes come from the Conventional Commits to the apps since the last release (git-cliff, cliff.toml).
 name: Android apps
 
 on:
@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the earlier release tags, for the notes
       - name: Android SDK packages
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'build-tools;36.1.0' 'platforms;android-36' > /dev/null
       - name: Release key
@@ -43,8 +45,14 @@ jobs:
           if gh release view "$tag" > /dev/null 2>&1; then
             gh release upload "$tag" $files --clobber
           else
+            {
+              echo "Frog Hub's display app (froghub.apk, instead of Fully Kiosk) and admin app (froghub-admin.apk)."
+              echo "See https://froghub-assistant.github.io/developers/android"
+              npx --yes git-cliff@2.14.2 --unreleased --strip all \
+                --include-path 'android/**' --include-path 'android-admin/**'
+            } > "$RUNNER_TEMP/notes.md"
             gh release create "$tag" $files --target "$GITHUB_SHA" --title "Android apps: display $app, admin $admin" \
-              --notes "Frog Hub's display app (froghub.apk, instead of Fully Kiosk) and admin app (froghub-admin.apk). See https://froghub-assistant.github.io/developers/android"
+              --notes-file "$RUNNER_TEMP/notes.md"
           fi
         env:
           GH_TOKEN: ${{ github.token }}
