@@ -35,6 +35,7 @@ export const POLICY_DEFAULTS = {
   screen: true, // show cards and pictures on the display
   announce: true, // pass messages on to the other displays
   history: false, // keep a log of questions and answers for the admin page
+  lists: true, // read and change the to-do and shopping lists a grown-up shared (lists.ts)
   recipeApi: true, // find recipes on recipeapi.io when setup was given a key (else TheMealDB)
 }
 export type Policy = typeof POLICY_DEFAULTS
@@ -44,6 +45,11 @@ const SYNCED = ['personality', 'nightStart', 'nightEnd', 'haUrl'] as const // no
 const read = (file: string) => (existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null)
 
 /** The settings a grown-up last published from admin mode (personality, name, area, ...), or {}. */
+/** The shared Home Assistant token, for the server's own calls (lists.ts); '' if there isn't one. */
+export function sharedToken(): string {
+  return existsSync(TOKEN_FILE) ? readFileSync(TOKEN_FILE, 'utf8').trim() : ''
+}
+
 export function sharedSettings(): Record<string, unknown> {
   return read(SETTINGS_FILE)?.settings ?? {}
 }

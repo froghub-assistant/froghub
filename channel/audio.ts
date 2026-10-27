@@ -7,6 +7,7 @@
  */
 import { clean } from './common.ts'
 import { type Screen, announce, findDisplay, onlineDisplays } from './announce.ts'
+import { playRadio } from './radio.ts'
 import type { Tool } from './tools.ts'
 
 export const audioTools: Tool[] = [
@@ -78,7 +79,7 @@ function target(to: unknown, from: Screen | undefined): Screen | undefined {
   return name ? undefined : from
 }
 
-/** Runs play_audio or stop_audio; returns the text for the assistant (throws on a bad link or display). */
+/** Runs play_audio, play_radio or stop_audio; returns the text for the assistant (throws on a bad link or display). */
 export async function runAudioTool(name: string, args: Record<string, unknown>, from?: Screen): Promise<string> {
   const to = target(args.to, from)
   const where = to ? to.name : 'every display that is on'
@@ -86,6 +87,7 @@ export async function runAudioTool(name: string, args: Record<string, unknown>, 
     announce({ text: '', audio: { stop: true }, to: to?.id, at_night: true })
     return `Stopped on ${where}.`
   }
+  if (name === 'play_radio') return playRadio(args, to, where)
   const url = await checkAudioUrl(args.url)
   const title = clean(args.title, 80)
   announce({ text: '', audio: { url, ...(title ? { title } : {}) }, to: to?.id, at_night: args.at_night === true })

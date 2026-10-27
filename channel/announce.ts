@@ -30,7 +30,7 @@ export type Announcement = {
   area?: string
   to?: string // a display's id: only that one
   from?: string // the sending display's id: never shown there
-  audio?: { url?: string; title?: string; stop?: true } // play_audio and stop_audio (audio.ts)
+  audio?: { url?: string; title?: string; hls?: true; stop?: true } // play_audio, play_radio and stop_audio (audio.ts, radio.ts)
   at_night: boolean
   at: number
 }

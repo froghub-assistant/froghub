@@ -16,6 +16,8 @@ import { handleSamples } from './samples.ts'
 import { type Screen, announce, findDisplay, handleAnnouncements, onlineDisplays, screenFor } from './announce.ts'
 import { type Job, startSchedule } from './schedule.ts'
 import { checkAudioUrl } from './audio.ts'
+import { handleRadio } from './radio.ts'
+import { handleLists } from './lists.ts'
 
 /** Hands `content` to the assistant (meta: personality, speaker, time, and kind, mode, audience, conversation_id
  * when they apply) and waits for its reply; null if it didn't answer in time. */
@@ -38,7 +40,7 @@ async function handleAsk(req: Request, ask: Ask): Promise<Response> {
   const others = allowed.announce ? onlineDisplays(from?.id).map(s => s.name) : []
   const offList = [
     !allowed.webSearch && 'web search', !allowed.memory && 'remembering things', !allowed.weather && 'the weather',
-    !allowed.alarms && 'alarms and timers', !allowed.devices && 'room devices', allowed.devices && !allowed.music && 'playing music',
+    !allowed.alarms && 'alarms and timers', !allowed.lists && 'the shared lists', !allowed.devices && 'room devices', allowed.devices && !allowed.music && 'playing music',
     !allowed.announce && 'sending messages to other displays',
   ].filter(Boolean)
 
@@ -152,10 +154,12 @@ export function routes(unlogged: Ask, ping: () => Record<string, unknown> = () =
     if (['/api/policy', '/api/settings', '/api/audience'].includes(pathname)) return handleStore(req, pathname)
     if (['/api/announcements', '/api/displays', '/api/announce'].includes(pathname)) return handleAnnouncements(req, pathname)
     if (pathname.startsWith('/api/wakeword/')) return handleSamples(req, pathname)
+    if (pathname.startsWith('/api/radio/')) return handleRadio(req, pathname)
     if (pathname === '/api/admin/displays') return handleRegistry(req, pathname)
     if (pathname === '/api/pair' || pathname === '/api/admin/pair') return handlePair(req, pathname)
     if (pathname === '/api/admin/memory') return handleMemory(req)
     if (pathname === '/api/admin/history') return handleHistory(req)
+    if (pathname === '/api/admin/lists') return handleLists(req)
     if (req.method === 'POST' && pathname === '/local/announce') return handleAnnounce(req, ask)
     if (req.method === 'POST' && pathname === '/api/admin/remember') {
       return adminValid(req.headers.get('x-admin-token')) ? handleRemember(req, ask) : json({ error: 'admin mode needed' }, 403)

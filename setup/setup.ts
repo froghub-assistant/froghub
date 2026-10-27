@@ -161,6 +161,22 @@ for (;;) {
   break
 }
 
+heading('Sound clips')
+say('The assistant finds sound clips (animal noises, instruments, sound effects) on Wikimedia Commons. With a free')
+say('Freesound.org API key (make an account, then freesound.org/apiv2/apply) it searches Freesound too.')
+const freesoundKeyFile = join(CONFIG, 'freesound.key')
+const oldFreesoundKey = existsSync(freesoundKeyFile) ? readFileSync(freesoundKeyFile, 'utf8').trim() : ''
+let freesoundKey = ''
+for (;;) {
+  freesoundKey = secret(oldFreesoundKey ? 'Freesound API key (Enter to keep it; "none" for Commons only)' : 'Freesound API key (Enter for Commons only)')
+  if (!freesoundKey || freesoundKey === 'none' || DRY) break
+  const r = await fetch(`https://freesound.org/apiv2/search/text/?query=frog&page_size=1&token=${encodeURIComponent(freesoundKey)}`, { signal: AbortSignal.timeout(10_000) })
+    .catch(() => null)
+  if (r?.status === 401) { say('Freesound turned that key down.'); continue }
+  if (!r?.ok) say(`Couldn't check it (${r ? `Freesound answered ${r.status}` : 'no answer'}); keeping it anyway.`)
+  break
+}
+
 heading('Admin PIN (for grown-ups: settings, the admin page, announcements)')
 const hasPin = existsSync(join(CONFIG, 'pin'))
 let pinHash = ''
@@ -241,6 +257,7 @@ write(join(CONFIG, 'instance.json'), JSON.stringify({ ...old, site, haUrl: haUrl
 if (weather.latitude !== undefined) write(join(CONFIG, 'weather.json'), JSON.stringify(weather) + '\n')
 if (pinHash) write(join(CONFIG, 'pin'), pinHash + '\n', 0o600)
 if (recipeKey) write(recipeKeyFile, recipeKey === 'none' ? '' : recipeKey + '\n', 0o600)
+if (freesoundKey) write(freesoundKeyFile, freesoundKey === 'none' ? '' : freesoundKey + '\n', 0o600)
 
 // Both brains listen on the same port, so only one runs
 const [unit, other] = brain === 'claude-code' ? ['froghub-agent', 'froghub-standalone'] : ['froghub-standalone', 'froghub-agent']

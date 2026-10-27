@@ -10,6 +10,10 @@ import { lookUp, wikipediaTool } from './wikipedia.ts'
 import { wikidataFacts, wikidataTool } from './wikidata.ts'
 import { historyTool, searchHistory } from './history.ts'
 import { audioTools, runAudioTool } from './audio.ts'
+import { radioTool } from './radio.ts'
+import { findSound, soundTool } from './sounds.ts'
+import { define, dictionaryTool } from './dictionary.ts'
+import { listsTool, runLists } from './lists.ts'
 import { alarmTools, runAlarmTool } from './alarms.ts'
 import { type Display, displayTool, cleanDisplay } from './display.ts'
 import { type Screen, announce, findDisplay, message, onlineDisplays } from './announce.ts'
@@ -72,7 +76,7 @@ const sendMessageTool: Tool = {
 /** The tools, for a brain that passes request_id to them (Claude Code) or not (the API brain). think_harder is
  * only offered with `think` (the API brain has its own, which hands the whole request over). */
 export function tools(o: { requestIds: boolean; think: boolean }): Tool[] {
-  const list: Tool[] = [weatherTool, recipeTool(), ...mathsTools, wikipediaTool, wikidataTool, historyTool, ...audioTools, ...alarmTools, displayTool, ...(o.think && bigModel('sonnet') ? [thinkTool] : []),
+  const list: Tool[] = [weatherTool, recipeTool(), ...mathsTools, wikipediaTool, wikidataTool, dictionaryTool, historyTool, ...audioTools, radioTool, soundTool, listsTool, ...alarmTools, displayTool, ...(o.think && bigModel('sonnet') ? [thinkTool] : []),
     announceTool, ...scheduleTools, sendMessageTool]
   if (o.requestIds) return list
   return list.map(t => {
@@ -96,13 +100,21 @@ export async function runTool(name: string, args: Record<string, unknown>, ctx: 
     if (name === 'find_recipe') return { text: await findRecipe(args) }
     if (name === 'calculate' || name === 'convert_units') return { text: runMathsTool(name, args) }
     if (name === 'search_history') return { text: searchHistory(args) }
-    if (name === 'play_audio' || name === 'stop_audio') {
+    if (name === 'play_audio' || name === 'play_radio' || name === 'stop_audio') {
       if (!allowed.music) return off('playing music')
       return { text: await runAudioTool(name, args, ctx.from) }
     }
-    if (name === 'wikipedia' || name === 'wikidata') {
+    if (name === 'find_sound') {
+      if (!allowed.music) return off('playing music')
+      return { text: await findSound(args) }
+    }
+    if (name === 'lists') {
+      if (!allowed.lists) return off('the shared lists')
+      return { text: await runLists(args) }
+    }
+    if (name === 'wikipedia' || name === 'wikidata' || name === 'dictionary') {
       if (!allowed.webSearch) return off('looking things up online')
-      return { text: name === 'wikipedia' ? await lookUp(args) : await wikidataFacts(args) }
+      return { text: name === 'wikipedia' ? await lookUp(args) : name === 'wikidata' ? await wikidataFacts(args) : await define(args) }
     }
     if (name === 'show_on_screen') {
       if (!allowed.screen) return off('showing things on the screen')
