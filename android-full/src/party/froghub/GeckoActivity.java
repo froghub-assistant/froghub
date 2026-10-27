@@ -98,6 +98,21 @@ public class GeckoActivity extends DisplayActivity {
         GeckoView view = new GeckoView(this);
         view.coverUntilFirstPaint(0xFF000000);
         view.setSession(session);
+        if (Build.VERSION.SDK_INT < 30) {
+            // GeckoView works out the keyboard's height from the window insets, and before Android 11 it takes the
+            // navigation bar coming and going for the keyboard: the page ended up a navigation bar taller than the
+            // screen, its buttons off the bottom. The page's text boxes are at the top, so it can do without.
+            view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+                @Override
+                public void onViewAttachedToWindow(View v) {
+                    view.removeWindowInsetsListener("KEYBOARD_WINDOW_INSETS_LISTENER"); // GeckoView adds it on attach
+                }
+
+                @Override
+                public void onViewDetachedFromWindow(View v) {
+                }
+            });
+        }
         return view;
     }
 
