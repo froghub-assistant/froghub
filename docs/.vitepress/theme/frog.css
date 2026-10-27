@@ -1,0 +1,22 @@
+/* Frog Hub's green (the Frog personality's colours, src/lib/personalities.js) instead of VitePress's indigo */
+:root {
+  --vp-c-brand-1: #1d7a33;
+  --vp-c-brand-2: #238f3d;
+  --vp-c-brand-3: #2a9d46;
+  --vp-c-brand-soft: rgba(91, 209, 107, 0.16);
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #1d7a33 20%, #5bd16b);
+  --vp-home-hero-image-background-image: radial-gradient(circle, rgba(91, 209, 107, 0.35) 0%, rgba(91, 209, 107, 0) 70%);
+  --vp-home-hero-image-filter: blur(48px);
+}
+
+.dark {
+  --vp-c-brand-1: #6fdc7e;
+  --vp-c-brand-2: #5bd16b;
+  --vp-c-brand-3: #2a9d46;
+  --vp-c-brand-soft: rgba(91, 209, 107, 0.18);
+  --vp-home-hero-name-background: linear-gradient(120deg, #5bd16b 20%, #b7f5bf);
+  --vp-c-bg: #0f1a13;
+  --vp-c-bg-alt: #0b140e;
+  --vp-c-bg-soft: #16241a;
+}

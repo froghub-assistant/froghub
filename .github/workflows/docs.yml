@@ -1,0 +1,36 @@
+# Builds the docs site (docs/, VitePress) and publishes it to https://froghub-assistant.github.io, which is served from
+# the main branch of the froghub-assistant/froghub-assistant.github.io repo. DOCS_DEPLOY_KEY is the private half of a
+# deploy key with write access to that repo.
+name: Docs
+
+on:
+  push:
+    branches: [master]
+    paths: ['docs/**', '.github/workflows/docs.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: docs
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # for each page's "Last updated"
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+        working-directory: docs
+      - run: bun run build
+        working-directory: docs
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          deploy_key: ${{ secrets.DOCS_DEPLOY_KEY }}
+          external_repository: froghub-assistant/froghub-assistant.github.io
+          publish_branch: main
+          publish_dir: docs/.vitepress/dist
+          user_name: Frog Hub
+          user_email: git@froghub.party
+          commit_message: 'docs: publish'
