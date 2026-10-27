@@ -24,6 +24,7 @@ const defaults = {
   goodnightDim: 10, // percent, for dim
   goodnightSound: 'rain', // rain, waves, white noise or none
   goodnightMinutes: 45, // then it fades out
+  maSpeaker: true, // be a Music Assistant speaker, when the server has one (music.svelte.js)
 }
 
 export const SYNCED = ['personality', 'nightStart', 'nightEnd', 'haUrl'] // not area or name: each display has its own room and person

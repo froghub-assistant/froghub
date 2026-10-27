@@ -38,6 +38,8 @@ export default defineConfig(({ mode }) => mode === 'demo' ? demo : {
     legacy({ targets: ['chrome >= 59', 'android >= 5'], modernPolyfills: true }),
     noWhere,
   ],
+  // `vite` on the server itself: the API and Music Assistant's Sendspin, as Caddy passes them on
+  server: { proxy: { '/api': 'http://127.0.0.1:8790', '/sendspin': { target: 'ws://127.0.0.1:8927', ws: true } } },
   build: {
     cssTarget: 'chrome59', // e.g. spells out `inset`, which Chrome 59 doesn't know either
     // Two pages: the display (/) and the admin page (/admin)

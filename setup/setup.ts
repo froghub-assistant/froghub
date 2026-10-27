@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * Sets up a new Frog Hub (or changes this one): `bun run setup` in the repo. Asks a few questions, then:
- *   - writes ~/.config/froghub/instance.json (site, Home Assistant, time zone, children), weather.json and the PIN
+ *   - writes ~/.config/froghub/instance.json (site, Home Assistant, time zone, children, Music Assistant), weather.json and the PIN
  *   - installs the assistant ("brain") as a systemd user service:
  *       claude-code  Claude Code on Haiku in tmux, using your Claude subscription (setup/agent/)
  *       api          standalone.ts: the Anthropic API and/or an OpenAI-compatible server such as LM Studio
@@ -129,6 +129,8 @@ const timeZone = ask('Time zone', old.timeZone || Intl.DateTimeFormat().resolved
 const kids = ask("Children's names, separated by commas", (old.kids || []).join(', '))
   .split(',').map(s => s.trim()).filter(Boolean)
 if (!kids.length) say("No names: the assistant's rules will just say \"the children\".")
+const musicAssistant = ask('Music Assistant\'s Sendspin server, so the displays can be its speakers (host:8927, "none" to go without)',
+  old.musicAssistant || 'none').replace(/^\w+:\/\//, '').replace(/\/.*$/, '')
 
 heading('Weather')
 const oldWeather = readJson(join(CONFIG, 'weather.json'))
@@ -253,7 +255,7 @@ if (brain === 'claude-code') {
   write(standaloneUnit, render('standalone/froghub-standalone.service', { BUN, CHANNEL_DIR, ENV_FILE: envFile }))
 }
 
-write(join(CONFIG, 'instance.json'), JSON.stringify({ ...old, site, haUrl: haUrl === 'none' ? '' : haUrl, timeZone, kids, agentDir }, null, 1) + '\n')
+write(join(CONFIG, 'instance.json'), JSON.stringify({ ...old, site, haUrl: haUrl === 'none' ? '' : haUrl, timeZone, kids, agentDir, musicAssistant: musicAssistant === 'none' ? '' : musicAssistant }, null, 1) + '\n')
 if (weather.latitude !== undefined) write(join(CONFIG, 'weather.json'), JSON.stringify(weather) + '\n')
 if (pinHash) write(join(CONFIG, 'pin'), pinHash + '\n', 0o600)
 if (recipeKey) write(recipeKeyFile, recipeKey === 'none' ? '' : recipeKey + '\n', 0o600)
@@ -307,6 +309,8 @@ ${haLocal ? `	# Spoken replies from Home Assistant, same-origin so the app can c
 		rewrite * /api/tts_proxy{path}
 		reverse_proxy ${haLocal}
 	}
+` : ''}${musicAssistant !== 'none' ? `	# Music Assistant's Sendspin, so the displays can be its speakers
+	reverse_proxy /sendspin ${musicAssistant}
 ` : ''}	header /assets/* Cache-Control "public, max-age=31536000, immutable"
 	header / Cache-Control "no-cache"
 	file_server

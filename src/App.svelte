@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte'
+  import { onMount, untrack } from 'svelte'
   import Face from './lib/Face.svelte'
   import Settings from './lib/Settings.svelte'
   import PinPad from './lib/PinPad.svelte'
@@ -13,6 +13,7 @@
   import { voice, startVoice, startTextOnly, stopVoice, setPersonality, tapToTalk, askText, sayUnasked, setMicMuted, setVolume } from './lib/assist.svelte.js'
   import { startAnnouncements, otherDisplays, sendMessage } from './lib/announce.js'
   import { player, playAudio, stopAudio, setAudioVolume, duck } from './lib/player.svelte.js'
+  import { music, startMusic, stopMusic, unlockMusic, duckMusic, stopMusicPlaying } from './lib/music.svelte.js'
   import { AlarmClock, Hand, Keyboard, LockOpen, Maximize2, Megaphone, Mic, MicOff, Minimize2, Music, Settings as Gear, Square, Timer, TriangleAlert, Volume, Volume1, Volume2, X } from '@lucide/svelte'
 
   const WEATHER = {
@@ -66,6 +67,15 @@
 
   $effect(() => (setVolume(settings.volume), setAudioVolume(settings.volume)))
   $effect(() => duck(busy))
+  $effect(() => duckMusic(busy))
+  // A Music Assistant speaker named after this display, once it's set up (again when the name changes)
+  let speakerName = $derived(house.musicAssistant && settings.maSpeaker && me.ready ? me.name : '')
+  $effect(() => {
+    if (!speakerName) return
+    const name = speakerName
+    untrack(() => startMusic(name).catch(() => {})) // it reads and sets music's own state, which mustn't restart it
+    return () => untrack(stopMusic)
+  })
 
   // The microphone button: the microphone off (or on again), kept across restarts
   function toggleMic() {
@@ -287,6 +297,7 @@
 
   async function tapToStart() {
     needsTap = false
+    unlockMusic()
     await beginVoice()
   }
 
@@ -629,6 +640,11 @@
     <div class="playing">
       {#if player.playing}<Music size={18} /><span>{player.title}</span>{:else}<TriangleAlert size={18} /><span>{player.error}</span>{/if}
       {#if player.playing}<button onclick={stopAudio} aria-label="Stop"><Square size={14} fill="currentColor" /></button>{:else}<button onclick={() => (player.error = '')} aria-label="Close"><X size={16} /></button>{/if}
+    </div>
+  {:else if music.playing}
+    <div class="playing">
+      <Music size={18} /><span>{music.title || 'Music Assistant'}{music.artist ? ` · ${music.artist}` : ''}</span>
+      <button onclick={stopMusicPlaying} aria-label="Stop"><Square size={14} fill="currentColor" /></button>
     </div>
   {/if}
 

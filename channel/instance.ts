@@ -8,12 +8,14 @@
  *   timeZone   the house's time zone (the displays use it too: an old Fire tablet's own time zone setting can be stuck)
  *   kids       the children the kids' rules are about, e.g. ["Sam"] (for examples on the admin page)
  *   agentDir   the Claude Code assistant's folder (the "claude-code" brain); its memory lives under ~/.claude/projects
+ *   musicAssistant  Music Assistant's Sendspin server (host:port, usually port 8927), which Caddy passes /sendspin on
+ *              to so the displays can be its speakers ("" = none)
  */
 import { existsSync, readFileSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
 
-export type Instance = { site: string; haUrl: string; timeZone: string; kids: string[]; agentDir: string }
+export type Instance = { site: string; haUrl: string; timeZone: string; kids: string[]; agentDir: string; musicAssistant: string }
 
 export const INSTANCE_FILE = join(homedir(), '.config', 'froghub', 'instance.json')
 
@@ -23,6 +25,7 @@ const DEFAULTS: Instance = {
   timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
   kids: [],
   agentDir: join(homedir(), 'froghub-agent'),
+  musicAssistant: '',
 }
 
 export const instance: Instance = {
@@ -41,5 +44,5 @@ export function houseTime(ms = Date.now(), options: Intl.DateTimeFormatOptions =
 /** GET /api/instance: what a display (or the admin page) needs to know; nothing secret. */
 export function handleInstance(): Response {
   const { site, haUrl, timeZone, kids } = instance
-  return Response.json({ site, haUrl, timeZone, kids })
+  return Response.json({ site, haUrl, timeZone, kids, musicAssistant: Boolean(instance.musicAssistant) })
 }

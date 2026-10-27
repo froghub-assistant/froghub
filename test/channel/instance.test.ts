@@ -20,7 +20,7 @@ describe('instance', () => {
   })
 
   test("the displays get the public part, not the server's folders", async () => {
-    expect(await handleInstance().json()).toEqual({ site: 'https://hub.example.com', haUrl: '', timeZone: 'Europe/London', kids: ['Sam'] })
+    expect(await handleInstance().json()).toEqual({ site: 'https://hub.example.com', haUrl: '', timeZone: 'Europe/London', kids: ['Sam'], musicAssistant: false })
   })
 
   test("times are in the house's time zone", () => {

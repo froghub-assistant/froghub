@@ -4,6 +4,7 @@
   import Recorder from './Recorder.svelte'
   import { POLICY } from './policy.js'
   import { SLEEP_SOUNDS, playAudio, stopAudio } from './player.svelte.js'
+  import { house } from './house.svelte.js'
   import { Key, Mic, Moon, Play, RefreshCw, Settings as Gear, Shield, Sparkles, User } from '@lucide/svelte'
 
   let { areas = [], adminToken = null, onClose, onUnlock, onWelcome } = $props()
@@ -114,6 +115,10 @@
   <p class="note">What the other Frog Hubs call it when you send a message to just this one.</p>
 
   <label>Night mode from <input type="number" min="0" max="23" bind:value={draft.nightStart} /> to <input type="number" min="0" max="23" bind:value={draft.nightEnd} /> o'clock</label>
+
+  {#if house.musicAssistant}
+    <label class="check"><input type="checkbox" bind:checked={draft.maSpeaker} /> Be a Music Assistant speaker (called this display's name)</label>
+  {/if}
 
   <details>
     <summary><Moon size={18} /> Goodnight</summary>
