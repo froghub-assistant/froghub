@@ -39,6 +39,17 @@ speaker, put that speaker's device in the living room area in Home Assistant.
 
 To play a sound or a stream on the displays themselves, see [Playing audio](/features/audio).
 
+## Finding music yourself
+
+With [Music Assistant](https://www.music-assistant.io), the display's bottom bar has a **Find music** button: search
+every music service added to Music Assistant at once (Spotify, Plex, SoundCloud, your own files...) for songs,
+artists, albums, playlists or radio, and tap one to play it, without asking the assistant. It plays on the display
+itself (if it's [a speaker](#the-displays-as-music-assistant-speakers)) or on a Music Assistant speaker in its room.
+
+- It follows the grown-ups' **Play music** switch, and on a children's display it leaves out songs marked explicit.
+- Music Assistant's own pictures (for your library, Plex and so on) come from its web server, so Caddy passes
+  `/imageproxy/` on to it (port 8095 on the same host as Sendspin); setup adds that.
+
 ## The displays as Music Assistant speakers
 
 With [Music Assistant](https://www.music-assistant.io), each display can be one of its speakers, named after the

@@ -309,8 +309,9 @@ ${haLocal ? `	# Spoken replies from Home Assistant, same-origin so the app can c
 		rewrite * /api/tts_proxy{path}
 		reverse_proxy ${haLocal}
 	}
-` : ''}${musicAssistant !== 'none' ? `	# Music Assistant's Sendspin, so the displays can be its speakers
+` : ''}${musicAssistant !== 'none' ? `	# Music Assistant's Sendspin, so the displays can be its speakers, and the pictures for its music (its web server)
 	reverse_proxy /sendspin ${musicAssistant}
+	reverse_proxy /imageproxy/* ${musicAssistant.replace(/:\d+$/, '')}:8095
 ` : ''}	header /assets/* Cache-Control "public, max-age=31536000, immutable"
 	header / Cache-Control "no-cache"
 	file_server

@@ -5,6 +5,7 @@
   import PinPad from './lib/PinPad.svelte'
   import Onboarding from './lib/Onboarding.svelte'
   import Tiles from './lib/Tiles.svelte'
+  import MusicSearch from './lib/MusicSearch.svelte'
   import { HomeAssistant } from './lib/ha.js'
   import { personality } from './lib/personalities.js'
   import { settings, saveSettings, pullShared } from './lib/settings.svelte.js'
@@ -14,7 +15,7 @@
   import { startAnnouncements, otherDisplays, sendMessage } from './lib/announce.js'
   import { player, playAudio, stopAudio, setAudioVolume, duck } from './lib/player.svelte.js'
   import { music, startMusic, stopMusic, unlockMusic, duckMusic, stopMusicPlaying } from './lib/music.svelte.js'
-  import { AlarmClock, Hand, Keyboard, LockOpen, Maximize2, Megaphone, Mic, MicOff, Minimize2, Music, Settings as Gear, Square, Timer, TriangleAlert, Volume, Volume1, Volume2, X } from '@lucide/svelte'
+  import { AlarmClock, Hand, Keyboard, ListMusic, LockOpen, Maximize2, Megaphone, Mic, MicOff, Minimize2, Music, Settings as Gear, Square, Timer, TriangleAlert, Volume, Volume1, Volume2, X } from '@lucide/svelte'
 
   const WEATHER = {
     'clear-night': '🌙', cloudy: '☁️', fog: '🌫️', hail: '🌨️', lightning: '🌩️', 'lightning-rainy': '⛈️',
@@ -31,6 +32,8 @@
   let areaEntities = $state([])
   let entityDevice = {} // entity_id -> device_id, for actions that address a device (Alexa text commands)
   let entityPlatform = {} // entity_id -> its integration, e.g. music_assistant: how play_music reaches it
+  let maEntry = $state('') // Music Assistant's config entry in HA, for searching it (MusicSearch)
+  let maPlayers = $state([]) // its speakers this display may use: { id, device, inRoom }
   let connection = $state('connecting') // connecting | ok | error | none (no Home Assistant set up)
   let connectionError = $state('')
   let needsTap = $state(false)
@@ -64,6 +67,7 @@
     ready: setUp() && !showOnboarding, // the welcome finished
   })
   let showVolume = $state(false) // the speaker button's slider
+  let showMusic = $state(false) // MusicSearch
 
   $effect(() => (setVolume(settings.volume), setAudioVolume(settings.volume)))
   $effect(() => duck(busy))
@@ -76,6 +80,15 @@
     untrack(() => startMusic(name).catch(() => {})) // it reads and sets music's own state, which mustn't restart it
     return () => untrack(stopMusic)
   })
+
+  // Where MusicSearch can play: this display's own speaker first, then the Music Assistant speakers in its room
+  let musicPlayers = $derived(
+    maPlayers
+      .map((pl) => ({ ...pl, here: !!speakerName && pl.device.toLowerCase() === speakerName.toLowerCase() }))
+      .filter((pl) => (pl.here || pl.inRoom) && states[pl.id] && states[pl.id].state !== 'unavailable')
+      .sort((a, b) => b.here - a.here)
+      .map((pl) => ({ id: pl.id, here: pl.here, name: states[pl.id].attributes.friendly_name || pl.id })),
+  )
 
   // The microphone button: the microphone off (or on again), kept across restarts
   function toggleMic() {
@@ -170,6 +183,16 @@
     const deviceArea = Object.fromEntries(devices.map((d) => [d.id, d.area_id]))
     entityDevice = Object.fromEntries(entities.map((e) => [e.entity_id, e.device_id]))
     entityPlatform = Object.fromEntries(entities.map((e) => [e.entity_id, e.platform]))
+    const deviceName = Object.fromEntries(devices.map((d) => [d.id, d.name_by_user || d.name || '']))
+    const ma = entities.filter((e) => e.platform === 'music_assistant' && !e.disabled_by)
+    maEntry = (ma.find((e) => e.config_entry_id) || {}).config_entry_id || ''
+    maPlayers = ma
+      .filter((e) => e.entity_id.startsWith('media_player.'))
+      .map((e) => ({
+        id: e.entity_id,
+        device: deviceName[e.device_id] || '',
+        inRoom: !!settings.area && (e.area_id || deviceArea[e.device_id]) === settings.area,
+      }))
     areaEntities = entities
       .filter((e) => !e.hidden_by && !e.disabled_by && !e.entity_category && TILE_DOMAINS.includes(e.entity_id.split('.')[0]))
       .filter((e) => settings.area && (e.area_id || deviceArea[e.device_id]) === settings.area)
@@ -608,7 +631,13 @@
       <span>{settings.volume}%</span>
     </div>
   {/if}
+  {#if connection === 'ok' && maEntry && musicPlayers.length && !DEMO}
+    <button class="find-music" onclick={() => ((showMusic = true), (showVolume = false))} aria-label="Find music"><ListMusic size={30} /></button>
+  {/if}
   <button class="gear" onclick={openSettings} aria-label="Settings"><Gear size={24} /></button>
+  {#if showMusic}
+    <MusicSearch {ha} players={musicPlayers} configEntry={maEntry} device={settings.deviceId} onClose={() => (showMusic = false)} />
+  {/if}
 
   {#if typing}
     <form class="typebox" onsubmit={sendTyped}>
@@ -879,6 +908,17 @@
   }
   .speaker {
     left: 164px;
+  }
+  .find-music {
+    position: absolute;
+    left: 214px;
+    bottom: 10px;
+    display: flex;
+    padding: 4px;
+    border: 0;
+    background: none;
+    color: var(--fg);
+    opacity: 0.7;
   }
   .speaker.low {
     left: 114px;
