@@ -6,6 +6,7 @@
   import Onboarding from './lib/Onboarding.svelte'
   import Tiles from './lib/Tiles.svelte'
   import MusicSearch from './lib/MusicSearch.svelte'
+  import NowPlaying from './lib/NowPlaying.svelte'
   import { HomeAssistant } from './lib/ha.js'
   import { personality } from './lib/personalities.js'
   import { settings, saveSettings, pullShared } from './lib/settings.svelte.js'
@@ -68,6 +69,7 @@
   })
   let showVolume = $state(false) // the speaker button's slider
   let showMusic = $state(false) // MusicSearch
+  let showPlaying = $state(false) // NowPlaying, from the now-playing pill
 
   $effect(() => (setVolume(settings.volume), setAudioVolume(settings.volume)))
   $effect(() => duck(busy))
@@ -89,6 +91,8 @@
       .sort((a, b) => b.here - a.here)
       .map((pl) => ({ id: pl.id, here: pl.here, name: states[pl.id].attributes.friendly_name || pl.id })),
   )
+
+  let herePlayer = $derived(musicPlayers.find((pl) => pl.here)) // this display's own Music Assistant speaker
 
   // The microphone button: the microphone off (or on again), kept across restarts
   function toggleMic() {
@@ -635,6 +639,9 @@
     <button class="find-music" onclick={() => ((showMusic = true), (showVolume = false))} aria-label="Find music"><ListMusic size={30} /></button>
   {/if}
   <button class="gear" onclick={openSettings} aria-label="Settings"><Gear size={24} /></button>
+  {#if showPlaying && herePlayer}
+    <NowPlaying {ha} id={herePlayer.id} entity={states[herePlayer.id]} onClose={() => (showPlaying = false)} onFind={() => ((showPlaying = false), (showMusic = true))} />
+  {/if}
   {#if showMusic}
     <MusicSearch {ha} players={musicPlayers} configEntry={maEntry} device={settings.deviceId} onClose={() => (showMusic = false)} />
   {/if}
@@ -672,7 +679,11 @@
     </div>
   {:else if music.playing}
     <div class="playing">
-      <Music size={18} /><span>{music.title || 'Music Assistant'}{music.artist ? ` · ${music.artist}` : ''}</span>
+      {#if herePlayer}
+        <button class="what" onclick={() => (showPlaying = true)}><Music size={18} /><span>{music.title || 'Music Assistant'}{music.artist ? ` · ${music.artist}` : ''}</span></button>
+      {:else}
+        <Music size={18} /><span>{music.title || 'Music Assistant'}{music.artist ? ` · ${music.artist}` : ''}</span>
+      {/if}
       <button onclick={stopMusicPlaying} aria-label="Stop"><Square size={14} fill="currentColor" /></button>
     </div>
   {/if}
@@ -834,6 +845,16 @@
     margin-left: 8px;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .playing .what {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
   }
   .playing button {
     display: flex;

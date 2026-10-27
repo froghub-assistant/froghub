@@ -46,6 +46,10 @@ every music service added to Music Assistant at once (Spotify, Plex, SoundCloud,
 artists, albums, playlists or radio, and tap one to play it, without asking the assistant. It plays on the display
 itself (if it's [a speaker](#the-displays-as-music-assistant-speakers)) or on a Music Assistant speaker in its room.
 
+Before a search it shows the library's favourites (heart them in Music Assistant) and some albums to browse. While
+the display's own speaker plays, tap the now-playing pill at the top for the picture, back, pause, next, its volume
+and what's up next.
+
 - It follows the grown-ups' **Play music** switch, and on a children's display it leaves out songs marked explicit.
 - Music Assistant's own pictures (for your library, Plex and so on) come from its web server, so Caddy passes
   `/imageproxy/` on to it (port 8095 on the same host as Sendspin); setup adds that.

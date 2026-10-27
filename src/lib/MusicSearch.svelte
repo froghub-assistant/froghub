@@ -18,20 +18,54 @@
   let query = $state('')
   let kind = $state('tracks')
   let results = $state(null) // Music Assistant's answer: { tracks: [...], artists: [...], ... }
+  let favourites = $state([]) // before searching: the library's favourites (tap the heart in Music Assistant)
+  let browse = $state([]) // and some albums from the library to browse
   let status = $state('')
   let allowed = $state(true) // the grown-ups' "Play music" switch
   let grownUps = $state(false) // on a grown-ups' display, explicit songs show too
-  let target = $state(players[0] ? players[0].id : '')
+  // Where to play: what was picked, else this display if it's a speaker (players lists it first, once it's on), else
+  // the room's first Music Assistant speaker
+  let chosen = $state('')
+  let target = $derived(chosen && players.some((pl) => pl.id === chosen) ? chosen : players[0] ? players[0].id : '')
   let input
   let searchId = 0
 
-  let shown = $derived(results ? (results[kind] || []).filter((item) => grownUps || item.explicit !== true) : [])
+  const clean = (items) => items.filter((item) => grownUps || item.explicit !== true)
+  let shown = $derived(results ? clean(results[kind] || []) : [])
 
   onMount(() => {
     input.focus()
     fetch('/api/policy').then((r) => r.json()).then((p) => (allowed = p.music !== false)).catch(() => {})
     fetch(`/api/audience?device=${device}`).then((r) => r.json()).then((a) => (grownUps = !!a.grownUps)).catch(() => {})
+    loadHome()
   })
+
+  async function library(data) {
+    try {
+      const r = await ha.call({
+        type: 'call_service',
+        domain: 'music_assistant',
+        service: 'get_library',
+        service_data: { config_entry_id: configEntry, limit: 12, ...data },
+        return_response: true,
+      })
+      return (r.response && r.response.items) || []
+    } catch {
+      return []
+    }
+  }
+
+  async function loadHome() {
+    const [tracks, playlists, albums, some] = await Promise.all([
+      library({ media_type: 'track', favorite: true }),
+      library({ media_type: 'playlist', favorite: true }),
+      library({ media_type: 'album', favorite: true }),
+      library({ media_type: 'album', order_by: 'random' }),
+    ])
+    favourites = [...playlists, ...albums, ...tracks]
+    const seen = new Set(favourites.map((i) => i.uri))
+    browse = some.filter((i) => !seen.has(i.uri))
+  }
 
   async function search(e) {
     e.preventDefault()
@@ -89,6 +123,15 @@
   }
 </script>
 
+{#snippet tile(item)}
+  {@const KindIcon = (KINDS.find((k) => k.key.startsWith(item.media_type)) || KINDS[0]).icon}
+  <button class="item" onclick={() => play(item)}>
+    {#if picture(item)}<img src={picture(item)} alt="" loading="lazy" />{:else}<span class="blank"><KindIcon size={48} /></span>{/if}
+    <span class="name">{item.name}{item.version ? ` (${item.version})` : ''}</span>
+    {#if by(item)}<span class="by">{by(item)}</span>{/if}
+  </button>
+{/snippet}
+
 <div class="music">
   <form class="bar" onsubmit={search}>
     <input bind:this={input} bind:value={query} placeholder="Find a song, artist or album" enterkeyhint="search" />
@@ -108,27 +151,29 @@
           </button>
         {/each}
       </div>
-      {#if players.length > 1}
-        <label class="where">
-          Play on
-          <select bind:value={target}>
-            {#each players as pl (pl.id)}<option value={pl.id}>{pl.here ? 'This display' : pl.name}</option>{/each}
-          </select>
-        </label>
-      {/if}
+      <label class="where">
+        Play on
+        <select value={target} onchange={(e) => (chosen = e.currentTarget.value)}>
+          {#each players as pl (pl.id)}<option value={pl.id}>{pl.here ? 'This display' : pl.name}</option>{/each}
+        </select>
+      </label>
     </div>
 
     {#if status}<p class="note">{status}</p>{/if}
 
     <div class="results">
-      {#each shown as item (item.uri)}
-        {@const KindIcon = KINDS.find((k) => k.key === kind).icon}
-        <button class="item" onclick={() => play(item)}>
-          {#if picture(item)}<img src={picture(item)} alt="" loading="lazy" />{:else}<span class="blank"><KindIcon size={48} /></span>{/if}
-          <span class="name">{item.name}{item.version ? ` (${item.version})` : ''}</span>
-          {#if by(item)}<span class="by">{by(item)}</span>{/if}
-        </button>
-      {/each}
+      {#if results}
+        {#each shown as item (item.uri)}{@render tile(item)}{/each}
+      {:else}
+        {#if clean(favourites).length}
+          <h3>Favourites</h3>
+          {#each clean(favourites) as item (item.uri)}{@render tile(item)}{/each}
+        {/if}
+        {#if clean(browse).length}
+          <h3>From your music</h3>
+          {#each clean(browse) as item (item.uri)}{@render tile(item)}{/each}
+        {/if}
+      {/if}
     </div>
   {/if}
 </div>
@@ -237,6 +282,11 @@
     padding: 0 16px 16px;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+  }
+  h3 {
+    grid-column: 1 / -1;
+    margin: 6px 0 0;
+    font-size: 20px;
   }
   .item {
     display: flex;
