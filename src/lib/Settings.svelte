@@ -3,6 +3,7 @@
   import { settings, saveSettings, pushShared } from './settings.svelte.js'
   import Recorder from './Recorder.svelte'
   import { POLICY } from './policy.js'
+  import { SLEEP_SOUNDS, playAudio, stopAudio } from './player.svelte.js'
 
   let { areas = [], adminToken = null, onClose, onUnlock, onWelcome } = $props()
 
@@ -28,6 +29,13 @@
   }
   let saving = $state('')
   let recording = $state(false) // the wake word recorder is open
+  let trying = null // the goodnight sound's ▶, while it plays
+
+  function trySound() {
+    clearTimeout(trying)
+    playAudio({ noise: draft.goodnightSound })
+    trying = setTimeout(stopAudio, 8000)
+  }
 
   // Edit a copy so nothing changes until Save.
   let draft = $state({ ...settings })
@@ -105,6 +113,34 @@
   <p class="note">What the other Frog Hubs call it when you send a 📢 message to just this one.</p>
 
   <label>Night mode from <input type="number" min="0" max="23" bind:value={draft.nightStart} /> to <input type="number" min="0" max="23" bind:value={draft.nightEnd} /> o'clock</label>
+
+  <details>
+    <summary>🌙 Goodnight</summary>
+    <p class="note">When someone says goodnight to this display (or a grown-up schedules it), once it has said goodnight:</p>
+    <label>
+      The room's lights
+      <select bind:value={draft.goodnightLights}>
+        <option value="off">Off</option>
+        <option value="dim">Dimmed</option>
+        <option value="leave">Left as they are</option>
+      </select>
+    </label>
+    {#if draft.goodnightLights === 'dim'}
+      <label>Dimmed to <input type="number" min="1" max="100" bind:value={draft.goodnightDim} /> %</label>
+    {/if}
+    <label>
+      Sleep sound
+      <select bind:value={draft.goodnightSound}>
+        {#each Object.entries(SLEEP_SOUNDS) as [id, name] (id)}<option value={id}>{name}</option>{/each}
+        <option value="none">None</option>
+      </select>
+    </label>
+    {#if draft.goodnightSound !== 'none'}
+      <label>For <input type="number" min="5" max="180" bind:value={draft.goodnightMinutes} /> minutes, then it fades out</label>
+      <button class="secondary small" onclick={trySound}>▶ Hear it</button>
+    {/if}
+    <p class="note">Then the screen stays dark and quiet until night mode ends in the morning, or until someone talks to it.</p>
+  </details>
 
   <details>
     <summary>Home Assistant connection</summary>

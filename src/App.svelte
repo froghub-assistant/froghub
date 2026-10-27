@@ -74,10 +74,12 @@
   // The house's time zone from the server: a tablet's own can be wrong (e.g. stuck on GMT on a debloated Fire).
   let TZ = $derived(house.timeZone)
   let hour = $derived(Number(now.toLocaleTimeString('en-GB', { hour: '2-digit', hour12: false, timeZone: TZ }).slice(0, 2)) % 24)
+  // After goodnight (sleepUntil), it's night until the morning, or until someone talks to it.
+  let sleepUntil = $state(loadSleep())
   let night = $derived(
-    settings.nightStart > settings.nightEnd
+    now < sleepUntil || (settings.nightStart > settings.nightEnd
       ? hour >= settings.nightStart || hour < settings.nightEnd
-      : hour >= settings.nightStart && hour < settings.nightEnd,
+      : hour >= settings.nightStart && hour < settings.nightEnd),
   )
   let weather = $derived(Object.values(states).find((s) => s.entity_id.startsWith('weather.')))
   let partOfDay = $derived(hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening')
@@ -306,8 +308,56 @@
     if (card && !cardFull) cardTimer = setTimeout(() => (card = null), card.seconds * 1000)
   }
 
+  // The goodnight routine (channel/goodnight.ts), once whatever is being said has been said: the room's lights off or
+  // down, night mode until the morning, and a sleep sound that fades out. The display's own settings say how, unless
+  // the assistant picked a sound or a time; the server leaves out the lights if a grown-up turned devices off.
+  let goodnight = $state(null)
+  $effect(() => {
+    if (!goodnight || busy) return
+    const g = goodnight
+    goodnight = null
+    if (g.lights && ha && settings.goodnightLights !== 'leave') {
+      for (const id of areaEntities.filter((e) => e.startsWith('light.') && states[e] && states[e].state === 'on')) {
+        if (settings.goodnightLights === 'dim') ha.callService('light', 'turn_on', { entity_id: id, brightness_pct: Math.max(1, Math.min(100, Number(settings.goodnightDim) || 10)) })
+        else ha.callService('light', 'turn_off', { entity_id: id })
+      }
+    }
+    setSleep(nextMorning())
+    const sound = g.sound || settings.goodnightSound
+    if (sound !== 'none') playAudio({ noise: sound, minutes: g.minutes || Number(settings.goodnightMinutes) || 45 })
+  })
+  $effect(() => {
+    if (busy && sleepUntil) setSleep(0) // someone's awake and talking to it
+  })
+
+  // The next time night mode ends (nightEnd o'clock, in the house's time zone).
+  function nextMorning() {
+    const [h, m] = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ }).split(':').map(Number)
+    const hours = (settings.nightEnd - (h % 24) + 24) % 24 || 24
+    return Date.now() + (hours * 60 - m) * 60000
+  }
+  function loadSleep() {
+    try {
+      return Number(localStorage.getItem('froghub-sleep')) || 0
+    } catch {
+      return 0
+    }
+  }
+  function setSleep(until) {
+    sleepUntil = until
+    try {
+      localStorage.setItem('froghub-sleep', String(until))
+    } catch {
+      // storage blocked: it lasts until the page reloads
+    }
+  }
+
   // Something the server wants said (announce.js). At night it's only shown, quietly, unless it says at_night.
   function announced(a) {
+    if (a.goodnight) {
+      goodnight = a.goodnight
+      if (!a.text) return
+    }
     const silent = night && !a.at_night
     if (a.audio) {
       if (a.audio.stop) return stopAudio()

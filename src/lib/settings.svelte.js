@@ -19,6 +19,11 @@ const defaults = {
   setUp: false, // the welcome was finished (displays from before it existed count as set up if they have an HA token)
   micMuted: false, // the 🎙️ button: microphone off
   volume: 100, // replies, announcements and alarms (alarms at least 20%)
+  // The goodnight routine (channel/goodnight.ts), per display
+  goodnightLights: 'off', // the room's lights: off, dim or leave
+  goodnightDim: 10, // percent, for dim
+  goodnightSound: 'rain', // rain, waves, white noise or none
+  goodnightMinutes: 45, // then it fades out
 }
 
 export const SYNCED = ['personality', 'nightStart', 'nightEnd', 'haUrl'] // not area or name: each display has its own room and person
