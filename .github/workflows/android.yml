@@ -8,8 +8,7 @@
 name: Android apps
 
 on:
-  push:
-    branches: [master]
+  push: # any branch: off master it only builds
     paths: ['android/**', 'android-full/**', 'android-admin/**', '.github/workflows/android.yml']
   workflow_dispatch:
 
