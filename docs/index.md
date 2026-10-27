@@ -25,16 +25,16 @@ features:
     details: '"Hey Jarvis", then ask. Wake word, speech-to-text and voices run in your house through Home Assistant, in Verity, Falsity, Lovity or Frog''s voice.'
     link: /features/voice
   - icon: 💡
-    title: Runs the room
-    details: Lights, switches, fans and speakers in the display's own room, and music by name on an Echo or a Music Assistant speaker.
+    title: Music, radio and the room
+    details: Lights, switches, fans and speakers in the display's own room, music by name on an Echo or a Music Assistant speaker, internet radio and sound clips.
     link: /features/devices-music
   - icon: ⏰
-    title: Alarms, timers and announcements
-    details: '"Wake me at seven", "tell the kitchen I''m hungry", "every school day at 7:45, tell them to get their shoes on".'
+    title: Alarms, lists and announcements
+    details: '"Wake me at seven", "add milk to the shopping list", "tell the kitchen I''m hungry", "every school day at 7:45, tell them to get their shoes on".'
     link: /features/announcements
   - icon: 🍝
-    title: Recipes, sums and facts
-    details: Recipes by name or by what's in the fridge, exact sums and unit conversions, Wikipedia and Wikidata, with cards and pictures on the screen.
+    title: Recipes, words and facts
+    details: Recipes by name or by what's in the fridge, exact sums and unit conversions, a dictionary, Wikipedia and Wikidata, with cards and pictures on the screen.
     link: /features/recipes
   - icon: 🧑‍🧑‍🧒
     title: Grown-ups decide

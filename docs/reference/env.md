@@ -11,6 +11,7 @@ rather than in the service unit.
 | `FROGHUB_BIG_MODEL` | The bigger model `think_harder` hands hard questions to; `none` turns it off | Sonnet |
 | `FROGHUB_RECIPEAPI_KEY` | A recipeapi.io key, overriding `~/.config/froghub/recipeapi.key` | |
 | `FROGHUB_MEALDB_KEY` | Your own TheMealDB key | `1` (the free one) |
+| `FROGHUB_FREESOUND_KEY` | A Freesound API key, overriding `~/.config/froghub/freesound.key` | |
 
 ## The Claude Code brain
 

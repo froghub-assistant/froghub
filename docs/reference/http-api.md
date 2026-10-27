@@ -43,6 +43,14 @@ expires after a while. Too many wrong PINs lock it for a few minutes.
 | `GET /api/settings` / `POST` | Settings shared by every display (the Home Assistant token only with `X-Admin-Token`). Posting is admin only |
 | `GET /api/audience?device=` / `POST {device, grownUps}` | Whether a display is a grown-ups' one. Posting is admin only |
 
+## Radio and lists
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/radio/<id>` | The stream of an http-only station `play_radio` chose, relayed for the https page. Ids last a day |
+| `GET /api/admin/lists` | Home Assistant's to-do lists: `{lists: [{id, name, items, allowed}]}`. Admin only |
+| `POST /api/admin/lists {allowed: [ids]}` | Which lists the assistant may use. Admin only |
+
 ## Pairing
 
 | Route | What it does |

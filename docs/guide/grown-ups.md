@@ -8,7 +8,7 @@
   wipe (erases its storage and starts it again as a new display) and forget. Displays pick up changes on their next
   poll, within 5 seconds.
 - **Announcements and alarms:** say something on the displays now, and see or cancel alarms and timers.
-- **Assistant:** what the assistant may use (below).
+- **Assistant:** what the assistant may use (below), and which [lists](/features/lists) it may use.
 - **Memory:** the assistant's memory files, and asking it to remember or forget something.
 - **📜 History:** what it was asked and what it answered.
 - **Voices:** the wake word recordings.
@@ -21,16 +21,17 @@ Each switch applies to both brains:
 
 | Switch | What it allows |
 | --- | --- |
-| Look things up online | Web search, Wikipedia and Wikidata |
+| Look things up online | Web search, the dictionary, Wikipedia and Wikidata |
 | Remember things between conversations | Its memory |
 | Check the weather | The weather |
 | Set alarms and timers | Alarms and timers |
 | See and control the room's devices | Lights, switches, fans and speakers in the display's room |
-| Play music | Music on the room's speakers, and audio links on the displays |
+| Play music | Music on the room's speakers, and radio, sound clips and audio links on the displays |
 | Know who it's talking to | The name of whoever the display is for |
 | Show cards and pictures on the screen | Cards, pictures and recipes on screen |
 | Pass messages on to the other Frog Hubs | Messages, announcements and scheduled jobs |
 | Keep a log of questions and answers | The History tab (off by default) |
+| Read and change the shared to-do and shopping lists | [Lists](/features/lists), only the ones you share |
 | Find recipes on recipeapi.io | recipeapi.io rather than TheMealDB, when there's a key |
 
 When something is switched off, the assistant is told, so it can say so kindly if asked.

@@ -16,7 +16,8 @@ Tablet (Fully Kiosk Browser or the Android app) ── https://<site> (Caddy on 
 ```
 
 - **The display** is a web app (Svelte). It talks to Home Assistant directly, with its own token, for the voice and the
-  room's devices, and to the Frog Hub server for everything else. The server never needs a Home Assistant token.
+  room's devices, and to the Frog Hub server for everything else. The server only talks to Home Assistant for the
+  [lists](/features/lists), with the token the displays share.
 - **The server** (`channel/`) serves the [HTTP API](/reference/http-api) and the assistant's tools, and keeps alarms,
   announcements, schedules, the displays' registry and the settings in `~/.config/froghub/`.
 - **The brain** answers. With Claude Code, the server is an MCP channel of a long-running Claude Code session, which

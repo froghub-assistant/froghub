@@ -41,7 +41,7 @@ admin PIN and which brain to use. Then it:
     `~/.config/froghub/standalone.env`, rules in `~/.config/froghub/assistant.md`, unit `froghub-standalone`).
 
   Both serve the same [HTTP API](/reference/http-api) and have the same tools;
-- asks for a [recipeapi.io](/features/recipes) key (optional);
+- asks for a [recipeapi.io](/features/recipes) key and a [Freesound](/features/audio#sound-clips) key (both optional);
 - builds the web app and copies it to the web root;
 - adds a site block to `/etc/caddy/Caddyfile` (it asks first and keeps a `.bak-froghub`) or prints it for you;
 - starts the voice containers (`setup/voice/compose.yaml`: openWakeWord, Whisper and Piper) and, with a Home Assistant

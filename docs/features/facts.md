@@ -1,4 +1,4 @@
-# Sums, units and facts
+# Sums, words and facts
 
 So the assistant doesn't do maths in its head or guess at facts, it has tools for them.
 
@@ -10,6 +10,12 @@ as code.
 ## Units
 
 `convert_units` converts length, weight, volume (British pints and gallons, US cups), temperature, speed, time and area.
+
+## Words
+
+`dictionary` says what a word or phrase means, from [Wiktionary](https://en.wiktionary.org): its meanings by part of
+speech, with an example sentence where there is one. A misspelt word gets the words they probably meant, so it helps
+with spelling too.
 
 ## Wikipedia
 
@@ -23,4 +29,4 @@ children. It gives the best match's summary, its picture (which `show_on_screen`
 atomic numbers, boiling points, distance from Earth and so on. It skips names and disambiguation pages, and says when
 the name could mean something else.
 
-Wikipedia and Wikidata are off with the grown-ups' "Look things up online" switch.
+The dictionary, Wikipedia and Wikidata are off with the grown-ups' "Look things up online" switch.

@@ -25,6 +25,9 @@
 | `schedule.json` | Scheduled jobs |
 | `history.jsonl` | The History log (owner-only; the newest 1,000) |
 | `recipeapi.key` | The recipeapi.io key |
+| `freesound.key` | The Freesound API key |
+| `lists.json` | Which Home Assistant lists the assistant may use |
+| `shared-settings.json`, `shared-token` | Settings every display shares, and the Home Assistant token (owner-only) |
 | `standalone.env` | The API brain's keys and settings (see [Environment variables](/reference/env)) |
 | `assistant.md` | The API brain's rules, yours to tweak |
 | `memory.md` | The API brain's memory |
