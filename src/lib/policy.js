@@ -5,7 +5,7 @@ export const POLICY = [
   ['weather', 'Check the weather'],
   ['alarms', 'Set alarms and timers'],
   ['devices', "See and control the room's devices"],
-  ['music', 'Play music on the Echo'],
+  ['music', 'Play music'],
   ['name', "Know who it's talking to"],
   ['screen', 'Show cards and pictures on the screen'],
   ['announce', 'Pass messages on to the other Frog Hubs'],

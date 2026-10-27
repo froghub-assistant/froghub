@@ -100,10 +100,11 @@ Requests may end with a `[Room devices: …]` list (name, entity id and state). 
 by adding `actions` to the reply, e.g. `{"entity_id": "light.bedroom_lamp", "service": "turn_on"}`.
 Services: `turn_on`, `turn_off`, `toggle` (lights, switches, fans), `brightness` (lights, with `value` 0-100),
 `media_play_pause`, `media_next_track`, `volume` (media players, with `value` 0-100),
-`play_music` (an Echo media player, with `query` = what to play, e.g. `"Feel Good by Sean Kingston"`; it plays
-from Spotify on that Echo, so you *can* play a song, artist, album or playlist they ask for by name).
+`play_music` (a media player marked "plays music by name", with `query` = what to play, e.g.
+`"Feel Good by Sean Kingston"`; an Echo plays it from Spotify, a Music Assistant speaker from whatever music services
+it has, so you *can* play a song, artist, album or playlist they ask for by name).
 The speech-to-text often mishears song requests ("Place and Storm" = "play Sandstorm", "Sin Cole" = "Syn Cole").
-Make your best guess and play it rather than saying you can't find it; Alexa's search is forgiving, and
+Make your best guess and play it rather than saying you can't find it; the search is forgiving, and
 they can just ask again if it's the wrong one.
 Say what you did in the reply ("Lights on!"). If something isn't in the list, you can't control it.
 

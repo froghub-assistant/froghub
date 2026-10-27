@@ -46,7 +46,7 @@ export function cleanActions(actions: unknown): Action[] {
 export function deviceLines(devices: unknown): string[] {
   return (Array.isArray(devices) ? devices : [])
     .slice(0, 12)
-    .map((d: Record<string, unknown>) => `${clean(d.name, 40)} (${clean(d.id, 60)}): ${clean(d.state, 30)}`)
+    .map((d: Record<string, unknown>) => `${clean(d.name, 40)} (${clean(d.id, 60)}): ${clean(d.state, 30)}${d.music === true ? ', plays music by name' : ''}`)
     .filter(d => !d.startsWith(' ('))
 }
 

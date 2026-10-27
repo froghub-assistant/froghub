@@ -80,7 +80,7 @@ const replyTool = {
             value: { type: 'number', description: '0-100, for brightness and volume' },
             query: {
               type: 'string',
-              description: 'For play_music on an Echo media_player: what to play, e.g. "Taylor Swift", "relaxing piano", "the Frozen soundtrack". It plays from Spotify.',
+              description: 'For play_music on a media_player that "plays music by name": what to play, e.g. "Taylor Swift", "relaxing piano", "the Frozen soundtrack".',
             },
           },
           required: ['entity_id', 'service'],

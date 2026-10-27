@@ -189,6 +189,12 @@ Anything on the server can as well: `POST /local/announce {"audio": "https://…
 uses its volume (turned down while someone talks to it), and stays quiet at night unless `at_night`. Off with the
 music switch.
 
+Music by name goes to a speaker in the display's room instead, with the `play_music` room action: an Echo (Home
+Assistant's Alexa Devices integration) is told to play it from Spotify, and a [Music Assistant](https://www.music-assistant.io/)
+player gets `music_assistant.play_media`, which searches the music services you've added to Music Assistant for the
+best match. The display marks such players "plays music by name" in the room's device list. Also off with the music
+switch.
+
 ## Thinking harder, and a fresh start
 
 The assistant is Haiku, which is quick. For what needs real thought (homework, a careful explanation, planning) it can

@@ -67,7 +67,7 @@ const REPLY_TOOL: Tool = {
             entity_id: { type: 'string' },
             service: { type: 'string', enum: [...SERVICES] },
             value: { type: 'number', description: '0-100, for brightness and volume' },
-            query: { type: 'string', description: 'For play_music on an Echo: what to play, e.g. "Sandstorm by Darude"' },
+            query: { type: 'string', description: 'For play_music on a media player that "plays music by name": what to play, e.g. "Sandstorm by Darude"' },
           },
           required: ['entity_id', 'service'],
         },

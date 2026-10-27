@@ -45,6 +45,10 @@ describe('deviceLines', () => {
   test('one line per device', () => {
     expect(deviceLines([{ name: 'Lamp', id: 'light.lamp', state: 'on' }])).toEqual(['Lamp (light.lamp): on'])
   })
+  test('says which speakers can play music by name', () => {
+    expect(deviceLines([{ name: 'Speaker', id: 'media_player.speaker', state: 'idle', music: true }, { name: 'TV', id: 'media_player.tv', state: 'off', music: 'yes' }]))
+      .toEqual(['Speaker (media_player.speaker): idle, plays music by name', 'TV (media_player.tv): off'])
+  })
   test('skips devices without a name and stops at 12', () => {
     const many = Array.from({ length: 20 }, (_, i) => ({ name: `D${i}`, id: `switch.d${i}`, state: 'off' }))
     expect(deviceLines([{ id: 'light.nameless', state: 'on' }])).toEqual([])

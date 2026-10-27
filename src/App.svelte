@@ -20,12 +20,14 @@
     windy: '💨', 'windy-variant': '💨', exceptional: '⚠️',
   }
   const TILE_DOMAINS = ['light', 'switch', 'fan', 'media_player']
+  const MUSIC_PLATFORMS = ['music_assistant', 'alexa_devices'] // media players play_music can play a song on by name
 
   let ha = null
   let states = $state({})
   let areas = $state([])
   let areaEntities = $state([])
   let entityDevice = {} // entity_id -> device_id, for actions that address a device (Alexa text commands)
+  let entityPlatform = {} // entity_id -> its integration, e.g. music_assistant: how play_music reaches it
   let connection = $state('connecting') // connecting | ok | error | none (no Home Assistant set up)
   let connectionError = $state('')
   let needsTap = $state(false)
@@ -153,6 +155,7 @@
     areas = areaList
     const deviceArea = Object.fromEntries(devices.map((d) => [d.id, d.area_id]))
     entityDevice = Object.fromEntries(entities.map((e) => [e.entity_id, e.device_id]))
+    entityPlatform = Object.fromEntries(entities.map((e) => [e.entity_id, e.platform]))
     areaEntities = entities
       .filter((e) => !e.hidden_by && !e.disabled_by && !e.entity_category && TILE_DOMAINS.includes(e.entity_id.split('.')[0]))
       .filter((e) => settings.area && (e.area_id || deviceArea[e.device_id]) === settings.area)
@@ -171,7 +174,10 @@
         speaker: settings.name,
         devices: areaEntities
           .filter((id) => states[id])
-          .map((id) => ({ id, name: states[id].attributes.friendly_name || id, state: states[id].state })),
+          .map((id) => ({
+            id, name: states[id].attributes.friendly_name || id, state: states[id].state,
+            ...(MUSIC_PLATFORMS.includes(entityPlatform[id]) ? { music: true } : {}),
+          })),
       }),
       onActions: runActions,
       onDisplay: showCard,
@@ -256,9 +262,16 @@
     return `${name(match)} ${state}!`
   }
 
-  // Echos play by voice command, so this works without Spotify Premium. The Echo is addressed by its device.
+  // Music by name. A Music Assistant player searches its providers (SoundCloud, Spotify, local files...) for the best
+  // match. Echos play by voice command, so that works without Spotify Premium; the Echo is addressed by its device.
   async function playMusic(entityId, query) {
     try {
+      const platform = entityPlatform[entityId]
+      if (platform === 'music_assistant') {
+        await ha.callService('music_assistant', 'play_media', { entity_id: entityId, media_id: query, enqueue: 'replace' })
+        return
+      }
+      if (platform && platform !== 'alexa_devices') throw new Error(`${entityId} can't play music by name`)
       const deviceId = entityDevice[entityId] || (await ha.call({ type: 'config/entity_registry/get', entity_id: entityId })).device_id
       if (!deviceId) throw new Error(`${entityId} has no device`)
       await ha.callService('alexa_devices', 'send_text_command', { device_id: deviceId, text_command: `play ${query} on Spotify` })

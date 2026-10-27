@@ -30,7 +30,7 @@ export const POLICY_DEFAULTS = {
   weather: true,
   alarms: true,
   devices: true, // see and control the room's devices
-  music: true, // play music on the Echo
+  music: true, // play music (on an Echo or Music Assistant speaker, and audio links on the displays)
   name: true, // be told who it's talking to
   screen: true, // show cards and pictures on the display
   announce: true, // pass messages on to the other displays
