@@ -16,6 +16,9 @@ hero:
       text: What it can do
       link: /features/voice
     - theme: alt
+      text: Get the app
+      link: /guide/displays#getting-the-app
+    - theme: alt
       text: For developers
       link: /developers/
 

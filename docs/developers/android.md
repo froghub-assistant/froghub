@@ -29,11 +29,18 @@ Its WebView is Chrome 59, which has no ES modules, so `vite.config.js` also buil
 
 ### Building it
 
-Build with `android/build.sh` on an x86 computer with the Android SDK (its build tools don't run on ARM). It signs with
-that computer's debug key, so updates built there install over the old one.
+Ready-built copies of both apps are on the [latest release](https://github.com/froghub-assistant/froghub/releases/latest),
+built by `.github/workflows/android.yml` whenever `android/` or `android-admin/` changes, and signed with Frog Hub's
+release key so each one installs over the last.
+
+To build it yourself, use `android/build.sh` on an x86 computer with the Android SDK (its build tools don't run on
+ARM). It signs with that computer's debug key (or `KEYSTORE` and `KS_PASS`), so updates built there install over the
+old one, but not over a release copy: Android only updates an app signed with the same key, so uninstall first to
+switch.
 
 ## The admin app
 
 `android-admin/` wraps [the admin page](/guide/grown-ups#the-admin-page) as a phone app (`party.froghub.admin`,
-minSdk 22 = Android 5.1), with the same Let's Encrypt check. It asks for the site on first start. Build it like the
-display app, with `android-admin/build.sh`.
+minSdk 22 = Android 5.1), with the same Let's Encrypt check. It asks for the site on first start.
+[Download it](https://github.com/froghub-assistant/froghub/releases/latest/download/froghub-admin.apk), or build it
+like the display app, with `android-admin/build.sh`.

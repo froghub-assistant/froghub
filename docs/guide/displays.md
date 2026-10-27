@@ -4,6 +4,14 @@ Any tablet with a modern-ish browser will do, down to old Fire tablets on Fire O
 full screen: in [Fully Kiosk Browser](https://www.fully-kiosk.com), or in [Frog Hub's own Android app](/developers/android),
 which keeps the screen on, plays sound without a tap and copes with Fire OS 5's certificate problems.
 
+## Getting the app
+
+<a class="download" href="https://github.com/froghub-assistant/froghub/releases/latest/download/froghub.apk">⬇️ Download the display app (froghub.apk)</a>
+
+On the tablet, open that link (or copy the file over), then allow installing from unknown sources when it asks: on a
+Fire tablet that's **Settings → Security & Privacy → Apps from Unknown Sources**. It asks for your Frog Hub's address
+on first start. There's an [admin app for phones](/developers/android#the-admin-app) too.
+
 ## The welcome
 
 A display with no Home Assistant token opens the welcome: hello, connect, pick a personality, who it's for and which
