@@ -42,6 +42,8 @@ export async function startMusic(name) {
     p.unlock().catch(() => {}) // the page has usually had its tap already; if not, unlockMusic() on the next one
     await p.connect()
   } else if (window.FrogHubApp && window.FrogHubApp.startDlna) {
+    // The app says what its speaker is playing through this
+    window.frogHubDlna = (state) => Object.assign(music, { playing: !!state.playing, title: state.title || '', artist: state.artist || '' })
     window.FrogHubApp.startDlna(name)
     music.via = 'dlna'
   }

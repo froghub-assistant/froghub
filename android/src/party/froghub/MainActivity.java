@@ -68,6 +68,7 @@ public class MainActivity extends Activity {
     private boolean showingError;
     private int cornerTaps;
     private IsrgTrust isrg; // null if the bundled roots wouldn't load
+    private DlnaSpeaker dlna; // the Music Assistant speaker, when the page asks for it (WebViews too old for Sendspin)
     private long firstCornerTap;
 
     @Override
@@ -223,6 +224,42 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void exit() {
             runOnUiThread(MainActivity.this::finish);
+        }
+
+        /** A DLNA speaker called `name` for Music Assistant (see DlnaSpeaker), when Sendspin can't run here. */
+        @JavascriptInterface
+        public void startDlna(String name) {
+            runOnUiThread(() -> {
+                if (dlna == null) dlna = new DlnaSpeaker(MainActivity.this, MainActivity.this::dlnaChanged);
+                dlna.start(name);
+            });
+        }
+
+        @JavascriptInterface
+        public void stopDlna() {
+            runOnUiThread(() -> {
+                if (dlna != null) dlna.stop();
+            });
+        }
+
+        @JavascriptInterface
+        public void duckDlna(boolean on) {
+            if (dlna != null) dlna.duck(on);
+        }
+
+        @JavascriptInterface
+        public void stopDlnaPlayback() {
+            if (dlna != null) dlna.stopPlayback();
+        }
+    }
+
+    /** Tells the page what the DLNA speaker is playing (music.svelte.js shows it). */
+    private void dlnaChanged(boolean playing, String title, String artist) {
+        try {
+            String state = new JSONObject().put("playing", playing).put("title", title).put("artist", artist).toString();
+            web.evaluateJavascript("window.frogHubDlna && window.frogHubDlna(" + state + ")", null);
+        } catch (JSONException e) {
+            // nothing to tell
         }
     }
 
@@ -470,6 +507,7 @@ public class MainActivity extends Activity {
         handler.removeCallbacks(retry);
         handler.removeCallbacks(sleep);
         if (wifiLock != null) wifiLock.release();
+        if (dlna != null) dlna.stop();
         web.destroy();
         super.onDestroy();
     }
