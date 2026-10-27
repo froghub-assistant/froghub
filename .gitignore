@@ -3,3 +3,5 @@ dist
 *.log
 *.bak-*
 setup/voice/data
+*.apk
+android*/build

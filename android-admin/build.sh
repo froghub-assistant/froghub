@@ -17,6 +17,7 @@ javac --release 11 -Xlint:-options -classpath "$ANDROID_JAR" -d build/classes $(
 "$TOOLS/d8" --min-api 22 --lib "$ANDROID_JAR" --output build/dex $(find build/classes -name '*.class')
 (cd build/dex && zip -q ../app.apk classes.dex)
 "$TOOLS/zipalign" -f -p 4 build/app.apk build/aligned.apk
-# The SDK's standard debug key ("android" is its well-known default password, not a secret).
-"$TOOLS/apksigner" sign --ks "$KEYSTORE" --ks-pass pass:android --out froghub-admin.apk build/aligned.apk
+# The SDK's debug key by default ("android" is its well-known password, not a secret); the release workflow gives
+# its own KEYSTORE and KS_PASS.
+"$TOOLS/apksigner" sign --ks "$KEYSTORE" --ks-pass "pass:${KS_PASS:-android}" --out froghub-admin.apk build/aligned.apk
 echo "built $(pwd)/froghub-admin.apk"
