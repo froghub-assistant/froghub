@@ -47,6 +47,7 @@ public abstract class DisplayActivity extends Activity {
     protected final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable retry = this::load;
     private final Runnable sleep = this::sleep;
+    private final Runnable hideBars = this::hideSystemBars;
     protected SharedPreferences prefs;
     private View cover; // black, over the page while the screen is "off"; also swallows the tap that wakes it
     private boolean asleep;
@@ -96,6 +97,7 @@ public abstract class DisplayActivity extends Activity {
             getWindow().getAttributes().layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         }
         setVolumeControlStream(AudioManager.STREAM_MUSIC); // volume keys change Frog Hub's volume, not the ringer
+        if (Build.VERSION.SDK_INT < 30) watchSystemBars();
 
         View page = createPage();
         cover = new View(this);
@@ -367,6 +369,20 @@ public abstract class DisplayActivity extends Activity {
         if (hasFocus) hideSystemBars();
     }
 
+    /**
+     * Before Android 11, "sticky" hiding doesn't always stick: a swipe from the edge, the keyboard or a dialog can bring
+     * the navigation bar back over the page's buttons and leave it there. So whenever the bars show, hide them again
+     * a couple of seconds later.
+     */
+    @SuppressWarnings("deprecation")
+    private void watchSystemBars() {
+        getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(flags -> {
+            if ((flags & View.SYSTEM_UI_FLAG_HIDE_NAVIGATION) != 0) return;
+            handler.removeCallbacks(hideBars);
+            handler.postDelayed(hideBars, 2000);
+        });
+    }
+
     @SuppressWarnings("deprecation")
     private void hideSystemBars() {
         if (Build.VERSION.SDK_INT >= 30) {
@@ -401,6 +417,7 @@ public abstract class DisplayActivity extends Activity {
     protected void onDestroy() {
         handler.removeCallbacks(retry);
         handler.removeCallbacks(sleep);
+        handler.removeCallbacks(hideBars);
         if (wifiLock != null) wifiLock.release();
         if (dlna != null) dlna.stop();
         pageDestroy();
