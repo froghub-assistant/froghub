@@ -20,6 +20,10 @@ import org.mozilla.geckoview.GeckoView;
 import org.mozilla.geckoview.WebExtension;
 import org.mozilla.geckoview.WebRequestError;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 /**
@@ -45,6 +49,7 @@ public class GeckoActivity extends DisplayActivity {
     protected View createPage() {
         if (runtime == null) {
             runtime = GeckoRuntime.create(getApplicationContext(), new GeckoRuntimeSettings.Builder()
+                    .configFilePath(writeGeckoConfig())
                     .remoteDebuggingEnabled(true) // about:debugging in Firefox on a computer, over adb
                     .consoleOutput(true) // the page's console in adb logcat
                     .build());
@@ -94,6 +99,24 @@ public class GeckoActivity extends DisplayActivity {
         view.coverUntilFirstPaint(0xFF000000);
         view.setSession(session);
         return view;
+    }
+
+    /**
+     * Firefox preferences: sound without a tap first, Web Audio included (the permission delegate below only covers
+     * audio and video elements). Only Frog Hub's own site is ever loaded, so this is all it applies to.
+     */
+    private String writeGeckoConfig() {
+        File file = new File(getFilesDir(), "geckoview-config.yaml");
+        String yaml = "prefs:\n"
+                + "  media.autoplay.default: 0\n"
+                + "  media.autoplay.block-webaudio: false\n";
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            out.write(yaml.getBytes(StandardCharsets.UTF_8));
+            return file.getPath();
+        } catch (IOException e) {
+            Log.e(TAG, "geckoview-config.yaml", e);
+            return null; // Gecko's defaults: a tap first
+        }
     }
 
     private void bridgeReady() {
