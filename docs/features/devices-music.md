@@ -49,6 +49,8 @@ for Music Assistant's Sendspin server (`host:8927`), and Caddy passes `/sendspin
   protocol, with the [Sendspin JS client](https://github.com/Sendspin/sendspin-js).
 - Older ones can't run it (it needs BigInt). Fire OS 5's WebView is Chrome 59, so there the
   [Android app](/developers/android) runs a **DLNA** speaker instead, playing through Android's own media player.
+- The [full Android app](/developers/android#the-full-display-app) brings its own up-to-date engine, so even on Fire
+  OS 5 it uses Sendspin.
 
 While it plays, the display shows the track with a stop button, and the music goes quieter while someone talks to
 Frog Hub. Each display can opt out under **Settings → Be a Music Assistant speaker**.

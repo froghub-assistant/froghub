@@ -12,6 +12,13 @@ On the tablet, open that link (or copy the file over), then allow installing fro
 Fire tablet that's **Settings → Security & Privacy → Apps from Unknown Sources**. It asks for your Frog Hub's address
 on first start. There's an [admin app for phones](/developers/android#the-admin-app) too.
 
+For an old tablet whose built-in web engine is out of date (such as a Fire on Fire OS 5), there's also the
+[full display app](https://github.com/froghub-assistant/froghub/releases/latest/download/froghub-full.apk)
+(froghub-full.apk). It brings Firefox's engine with it instead of using the tablet's old built-in one, so everything
+works, including being a [Music Assistant speaker](/features/devices-music#the-displays-as-music-assistant-speakers)
+the modern way. It's a much bigger download (about 80 MB), and a little slower to start.
+[More about it](/developers/android#the-full-display-app).
+
 ## The welcome
 
 A display with no Home Assistant token opens the welcome: hello, connect, pick a personality, who it's for and which
