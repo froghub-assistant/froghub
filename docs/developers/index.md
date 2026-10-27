@@ -6,6 +6,7 @@
 | --- | --- |
 | `src/` | The display's web app (Svelte 5): `App.svelte`, and `src/lib/` for the voice, settings, the welcome, cards and the audio player |
 | `src/admin/`, `admin/` | The admin page |
+| `src/demo/`, `demo/` | [The demo](/demo/){target="_self"}: the display with a pretend server and Home Assistant, built with `vite build --mode demo` into `docs/public/demo` |
 | `channel/` | The server: the HTTP API (`app.ts`), the Claude Code channel (`server.ts`), the API brain (`standalone.ts`) and a file per tool |
 | `setup/` | `setup.ts`, the Claude Code brain's template (`agent/`), the API brain's (`standalone/`) and the voice containers (`voice/`) |
 | `android/`, `android-admin/` | [The Android apps](/developers/android) |

@@ -13,6 +13,10 @@ hero:
       text: Install it
       link: /guide/install
     - theme: alt
+      text: Try the demo
+      link: /demo/
+      target: _self
+    - theme: alt
       text: What it can do
       link: /features/voice
     - theme: alt
