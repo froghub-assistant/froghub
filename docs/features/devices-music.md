@@ -38,3 +38,17 @@ speaker, put that speaker's device in the living room area in Home Assistant.
 :::
 
 To play a sound or a stream on the displays themselves, see [Playing audio](/features/audio).
+
+## The displays as Music Assistant speakers
+
+With [Music Assistant](https://www.music-assistant.io), each display can be one of its speakers, named after the
+display, so anything Music Assistant plays (and Home Assistant, through it) can play on the tablet itself. Setup asks
+for Music Assistant's Sendspin server (`host:8927`), and Caddy passes `/sendspin` on to it.
+
+- In a modern browser (Chrome 67 or newer), the display joins over **Sendspin**, Music Assistant's own streaming
+  protocol, with the [Sendspin JS client](https://github.com/Sendspin/sendspin-js).
+- Older ones can't run it (it needs BigInt). Fire OS 5's WebView is Chrome 59, so there the
+  [Android app](/developers/android) runs a **DLNA** speaker instead, playing through Android's own media player.
+
+While it plays, the display shows the track with a stop button, and the music goes quieter while someone talks to
+Frog Hub. Each display can opt out under **Settings → Be a Music Assistant speaker**.
