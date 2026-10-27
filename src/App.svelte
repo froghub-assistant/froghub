@@ -21,6 +21,7 @@
   }
   const TILE_DOMAINS = ['light', 'switch', 'fan', 'media_player']
   const MUSIC_PLATFORMS = ['music_assistant', 'alexa_devices'] // media players play_music can play a song on by name
+  const DEMO = import.meta.env.MODE === 'demo' // the try-it-in-a-browser demo (src/demo/): no microphone
 
   let ha = null
   let states = $state({})
@@ -255,10 +256,11 @@
     const [state, target] = on ? [on[1], on[2]] : after ? [after[2], after[1]] : []
     if (!state) return null
     const switchable = room.filter((id) => /^(light|switch|fan)\./.test(id))
-    const lightWords = /^(lights?|lamps?)$/
-    const match = switchable.find((id) => name(id).toLowerCase().includes(target))
-      || (lightWords.test(target) && switchable.filter((id) => id.startsWith('light.')).length === 1
-        ? switchable.find((id) => id.startsWith('light.')) : null)
+    // "the lights" means every light in the room: only quick with one of them (else "Fairy lights" would match alone)
+    const lights = switchable.filter((id) => id.startsWith('light.'))
+    const only = lights.length === 1 ? lights[0] : null
+    const match = /^(lights|lamps)$/.test(target) ? only
+      : switchable.find((id) => name(id).toLowerCase().includes(target)) || (/^(light|lamp)$/.test(target) ? only : null)
     if (!match) return null
     ha.callService('homeassistant', state === 'on' ? 'turn_on' : 'turn_off', { entity_id: match })
     return `${name(match)} ${state}!`
@@ -536,7 +538,8 @@
       {#if voice.reply && voice.status !== 'listening'}<p class="reply">{voice.reply}</p>{/if}
     {:else}
       <p class="greeting">{p.greeting(settings.name)}</p>
-      {#if voice.muted && connection !== 'none'}<p class="hint">🔇 The microphone is off. Tap 🎙️ to turn it on, or tap me to type.</p>
+      {#if DEMO}<p class="hint">Tap me to type, or pick something to try at the top.</p>
+      {:else if voice.muted && connection !== 'none'}<p class="hint">🔇 The microphone is off. Tap 🎙️ to turn it on, or tap me to type.</p>
       {:else if voice.wakeWord && voice.status === 'waiting'}<p class="hint">Say “{voice.wakeWord}” or tap me to talk</p>{/if}
       {#if voice.status === 'error'}<p class="hint">{voice.error}</p>{/if}
     {/if}
@@ -583,12 +586,12 @@
 
   <button class="keyboard" onclick={() => ((typing = !typing), (messaging = false))} aria-label="Type to {p.name}">⌨️</button>
   <button class="megaphone" onclick={openMessaging} aria-label="Send a message to the other Frog Hubs">📢</button>
-  {#if connection !== 'none'}
+  {#if connection !== 'none' && !DEMO}
     <button class="mic" class:muted={voice.muted} onclick={toggleMic} aria-label={voice.muted ? 'Turn the microphone on' : 'Turn the microphone off'}>{voice.muted ? '🔇' : '🎙️'}</button>
   {/if}
-  <button class="speaker" class:low={connection === 'none'} onclick={() => (showVolume = !showVolume)} aria-label="Volume">{settings.volume === 0 ? '🔈' : settings.volume < 50 ? '🔉' : '🔊'}</button>
+  <button class="speaker" class:low={connection === 'none' || DEMO} onclick={() => (showVolume = !showVolume)} aria-label="Volume">{settings.volume === 0 ? '🔈' : settings.volume < 50 ? '🔉' : '🔊'}</button>
   {#if showVolume}
-    <div class="volume" class:low={connection === 'none'}>
+    <div class="volume" class:low={connection === 'none' || DEMO}>
       <input type="range" min="0" max="100" step="5" bind:value={settings.volume} onchange={saveSettings} aria-label="Volume" />
       <span>{settings.volume}%</span>
     </div>

@@ -1,6 +1,7 @@
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import legacy from '@vitejs/plugin-legacy'
 import { defineConfig } from 'vite'
+import { fileURLToPath } from 'url'
 
 // Svelte scopes nested selectors as `.a.svelte-x b:where(.svelte-x)`, and Chrome 59 has no :where(), so it drops
 // those whole rules (unstyled inputs and buttons on old tablets). Plain classes instead; only a little more specific.
@@ -19,7 +20,18 @@ const noWhere = {
   },
 }
 
-export default defineConfig({
+// `vite build --mode demo`: the try-it-in-a-browser demo (demo/index.html, src/demo/) for the docs site, with a pretend
+// server and Home Assistant in place of ./lib/ha.js. Modern browsers only; served from the docs at /demo/.
+const demo = {
+  root: 'demo',
+  base: './',
+  publicDir: false,
+  plugins: [svelte()],
+  resolve: { alias: [{ find: /^(\.\/lib\/|\.\/)ha\.js$/, replacement: fileURLToPath(new URL('src/demo/ha.js', import.meta.url)) }] },
+  build: { outDir: '../docs/public/demo', emptyOutDir: true },
+}
+
+export default defineConfig(({ mode }) => mode === 'demo' ? demo : {
   plugins: [
     svelte(),
     // Old tablets such as the 7th-gen Fire 7 run Fire OS 5 = Android 5.1, whose WebView is Chrome 59 (no ES modules, so it gets these).

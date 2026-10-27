@@ -5,3 +5,4 @@ dist
 setup/voice/data
 *.apk
 android*/build
+docs/public/demo
