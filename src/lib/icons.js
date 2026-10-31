@@ -27,6 +27,7 @@ import Microphone from 'phosphor-svelte/lib/MicrophoneIcon'
 import MicrophoneSlash from 'phosphor-svelte/lib/MicrophoneSlashIcon'
 import Moon from 'phosphor-svelte/lib/MoonIcon'
 import MusicNotes from 'phosphor-svelte/lib/MusicNotesIcon'
+import Palette from 'phosphor-svelte/lib/PaletteIcon'
 import Pause from 'phosphor-svelte/lib/PauseIcon'
 import Play from 'phosphor-svelte/lib/PlayIcon'
 import Playlist from 'phosphor-svelte/lib/PlaylistIcon'
@@ -71,6 +72,7 @@ export const icons = {
   Minimize2: pair(L.Minimize2, ArrowsIn),
   Moon: pair(L.Moon, Moon),
   Music: pair(L.Music, MusicNotes),
+  Palette: pair(L.Palette, Palette),
   PartyPopper: pair(L.PartyPopper, Confetti),
   Pause: pair(L.Pause, Pause),
   Play: pair(L.Play, Play),
