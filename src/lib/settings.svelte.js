@@ -8,7 +8,7 @@ const defaults = {
   haUrl: '', // filled from the server's instance settings during the welcome
   token: '',
   personality: 'frog', // the default look, until someone picks another
-  iconStyle: 'outline', // outline or two-tone (icons.js)
+  iconStyle: 'outline', // outline (Lucide) or two-tone (Phosphor's duotone): Icon.svelte
   name: '', // who it's for (per display)
   area: '', // area id for the buttons and what the assistant may control (picked per display)
   nightStart: 21,

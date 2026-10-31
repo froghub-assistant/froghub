@@ -13,18 +13,14 @@ button {
   cursor: pointer;
 }
 
-/* Lucide icons (@lucide/svelte) sit on the middle of the text beside them */
+/* Icons (Lucide, or Phosphor's when two-tone: Icon.svelte) sit on the middle of the text beside them */
 .lucide {
   flex: none;
   vertical-align: middle;
 }
 
-/* Two-tone icons (Settings → Icons): closed shapes get a soft fill in the accent colour. icons.js marks the paths */
-.two-tone .lucide rect,
-.two-tone .lucide circle,
-.two-tone .lucide ellipse,
-.two-tone .lucide polygon,
-.two-tone .lucide path[data-shape='closed'] {
+/* Two-tone icons (Settings → Icons, Phosphor's duotone): the soft back layer in the personality's colour */
+.phosphor path[opacity='0.2'] {
   fill: var(--accent, currentColor);
-  fill-opacity: 0.35;
+  opacity: 0.4;
 }

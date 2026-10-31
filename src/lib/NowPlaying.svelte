@@ -2,7 +2,8 @@
   // What this display's Music Assistant speaker is playing, from the now-playing pill: the picture, back, play/pause,
   // next, its volume and what's up next. All through Home Assistant's media player for it.
   import { onMount } from 'svelte'
-  import { ListMusic, Music, Pause, Play, SkipBack, SkipForward, Square, X } from '@lucide/svelte'
+  import Icon from './Icon.svelte'
+  import { icons as I } from './icons.js'
 
   // id: the speaker's media_player entity; entity: its HA state (kept up to date by the page)
   let { ha, id, entity, onClose, onFind } = $props()
@@ -58,18 +59,18 @@
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <div class="sheet-back" onclick={onClose}>
   <div class="sheet" onclick={(e) => e.stopPropagation()}>
-    <button class="close" onclick={onClose} aria-label="Close"><X size={26} /></button>
-    {#if picture}<img src={picture} alt="" />{:else}<div class="blank"><Music size={80} /></div>{/if}
+    <button class="close" onclick={onClose} aria-label="Close"><Icon of={I.X} size={26} /></button>
+    {#if picture}<img src={picture} alt="" />{:else}<div class="blank"><Icon of={I.Music} size={80} /></div>{/if}
     <h2>{a.media_title || 'Nothing playing'}</h2>
     {#if a.media_artist || a.media_album_name}<p class="by">{[a.media_artist, a.media_album_name].filter(Boolean).join(' · ')}</p>{/if}
 
     <div class="controls">
-      <button onclick={() => media('media_previous_track')} aria-label="Back"><SkipBack size={34} /></button>
+      <button onclick={() => media('media_previous_track')} aria-label="Back"><Icon of={I.SkipBack} size={34} /></button>
       <button class="main" onclick={() => media('media_play_pause')} aria-label={playing ? 'Pause' : 'Play'}>
-        {#if playing}<Pause size={40} fill="currentColor" />{:else}<Play size={40} fill="currentColor" />{/if}
+        {#if playing}<Icon of={I.Pause} size={40} fill="currentColor" />{:else}<Icon of={I.Play} size={40} fill="currentColor" />{/if}
       </button>
-      <button onclick={() => media('media_next_track')} aria-label="Next"><SkipForward size={34} /></button>
-      <button onclick={() => (media('media_stop'), onClose())} aria-label="Stop"><Square size={28} fill="currentColor" /></button>
+      <button onclick={() => media('media_next_track')} aria-label="Next"><Icon of={I.SkipForward} size={34} /></button>
+      <button onclick={() => (media('media_stop'), onClose())} aria-label="Stop"><Icon of={I.Square} size={28} fill="currentColor" /></button>
     </div>
 
     <label class="volume">
@@ -80,7 +81,7 @@
 
     {#if next}<p class="next">Up next: {next}</p>{/if}
     {#if error}<p class="next">Couldn't do that: {error}</p>{/if}
-    <button class="find" onclick={onFind}><ListMusic size={20} /> Find something else</button>
+    <button class="find" onclick={onFind}><Icon of={I.ListMusic} size={20} /> Find something else</button>
   </div>
 </div>
 

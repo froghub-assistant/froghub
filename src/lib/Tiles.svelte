@@ -1,10 +1,11 @@
 <script>
   // Buttons for the lights, switches, fans and media players in one HA area.
-  import { Fan, Lightbulb, Pause, Play, Plug, Power } from '@lucide/svelte'
+  import Icon from './Icon.svelte'
+  import { icons as I } from './icons.js'
 
   let { states, entities, onToggle, onMedia } = $props()
 
-  const icons = { light: Lightbulb, switch: Plug, fan: Fan }
+  const icons = { light: I.Lightbulb, switch: I.Plug, fan: I.Fan }
 
   function title(id) {
     const s = states[id]
@@ -19,14 +20,14 @@
     {#if s && s.state !== 'unavailable'}
       {#if domain === 'media_player'}
         <button class="tile media" class:on={s.state === 'playing'} onclick={() => onMedia(id)}>
-          <span class="icon">{#if s.state === 'playing'}<Pause size={26} />{:else}<Play size={26} />{/if}</span>
+          <span class="icon">{#if s.state === 'playing'}<Icon of={I.Pause} size={26} />{:else}<Icon of={I.Play} size={26} />{/if}</span>
           <span class="name">{title(id)}</span>
           <span class="sub">{s.attributes.media_title || s.state}</span>
         </button>
       {:else}
-        {@const Icon = icons[domain] || Power}
+        {@const icon = icons[domain] || I.Power}
         <button class="tile" class:on={s.state === 'on'} onclick={() => onToggle(id)}>
-          <span class="icon"><Icon size={26} /></span>
+          <span class="icon"><Icon of={icon} size={26} /></span>
           <span class="name">{title(id)}</span>
           <span class="sub">{s.state === 'on' ? 'On' : 'Off'}</span>
         </button>

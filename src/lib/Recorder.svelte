@@ -4,7 +4,8 @@
   import { onDestroy } from 'svelte'
   import { startMic } from './mic.js'
   import { tapMic } from './assist.svelte.js'
-  import { Mic } from '@lucide/svelte'
+  import Icon from './Icon.svelte'
+  import { icons as I } from './icons.js'
 
   let { adminToken, name = '', onClose } = $props()
 
@@ -100,7 +101,7 @@
 </script>
 
 <div class="recorder">
-  <h1><Mic size={30} /> Teach Verity your voice</h1>
+  <h1><Icon of={I.Mic} size={30} /> Teach Verity your voice</h1>
   <p class="note">
     These recordings stay on the server and are only used to train the "Hey Verity" wake word. Each person: about 40 of
     "Hey Verity" and 20 of other things.

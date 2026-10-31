@@ -2,17 +2,18 @@
   // Find music and play it, without asking the assistant: songs, artists, albums, playlists and radio from every
   // music service added to Music Assistant, played on this display or a Music Assistant speaker in its room.
   import { onMount } from 'svelte'
-  import { Disc3, ListMusic, Music, Radio, Search, User, X } from '@lucide/svelte'
+  import Icon from './Icon.svelte'
+  import { icons as I } from './icons.js'
 
   // players: [{ id, name, here }], this display's own speaker first. configEntry: Music Assistant's, for its search.
   let { ha, players, configEntry, device, onClose } = $props()
 
   const KINDS = [
-    { key: 'tracks', label: 'Songs', icon: Music },
-    { key: 'artists', label: 'Artists', icon: User },
-    { key: 'albums', label: 'Albums', icon: Disc3 },
-    { key: 'playlists', label: 'Playlists', icon: ListMusic },
-    { key: 'radio', label: 'Radio', icon: Radio },
+    { key: 'tracks', label: 'Songs', icon: I.Music },
+    { key: 'artists', label: 'Artists', icon: I.User },
+    { key: 'albums', label: 'Albums', icon: I.Disc3 },
+    { key: 'playlists', label: 'Playlists', icon: I.ListMusic },
+    { key: 'radio', label: 'Radio', icon: I.Radio },
   ]
 
   let query = $state('')
@@ -124,9 +125,9 @@
 </script>
 
 {#snippet tile(item)}
-  {@const KindIcon = (KINDS.find((k) => k.key.startsWith(item.media_type)) || KINDS[0]).icon}
+  {@const kind = (KINDS.find((k) => k.key.startsWith(item.media_type)) || KINDS[0]).icon}
   <button class="item" onclick={() => play(item)}>
-    {#if picture(item)}<img src={picture(item)} alt="" loading="lazy" />{:else}<span class="blank"><KindIcon size={48} /></span>{/if}
+    {#if picture(item)}<img src={picture(item)} alt="" loading="lazy" />{:else}<span class="blank"><Icon of={kind} size={48} /></span>{/if}
     <span class="name">{item.name}{item.version ? ` (${item.version})` : ''}</span>
     {#if by(item)}<span class="by">{by(item)}</span>{/if}
   </button>
@@ -135,8 +136,8 @@
 <div class="music">
   <form class="bar" onsubmit={search}>
     <input bind:this={input} bind:value={query} placeholder="Find a song, artist or album" enterkeyhint="search" />
-    <button type="submit" disabled={!query.trim()} aria-label="Search"><Search size={24} /></button>
-    <button type="button" class="close" onclick={onClose} aria-label="Close"><X size={26} /></button>
+    <button type="submit" disabled={!query.trim()} aria-label="Search"><Icon of={I.Search} size={24} /></button>
+    <button type="button" class="close" onclick={onClose} aria-label="Close"><Icon of={I.X} size={26} /></button>
   </form>
 
   {#if !allowed}
@@ -147,7 +148,7 @@
         {#each KINDS as k (k.key)}
           {@const count = results ? (results[k.key] || []).length : 0}
           <button class:chosen={kind === k.key} disabled={results && !count} onclick={() => (kind = k.key)}>
-            <k.icon size={20} />{k.label}
+            <Icon of={k.icon} size={20} />{k.label}
           </button>
         {/each}
       </div>

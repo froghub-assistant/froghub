@@ -52,9 +52,9 @@ how you send it messages or announcements, and the room decides which devices it
 
 ## Icons
 
-Settings → Icons picks outline icons (the default) or two-tone ones, where the closed shapes in each icon get a soft
-fill in the personality's colour. Like the personality, it's shared with the other displays when a grown-up saves in
-admin mode.
+Settings → Icons picks outline icons (the default, [Lucide](https://lucide.dev)) or two-tone ones
+([Phosphor](https://phosphoricons.com)'s duotone icons, with the soft layer in the personality's colour). Like the
+personality, it's shared with the other displays when a grown-up saves in admin mode.
 
 ## Grown-ups' displays
 

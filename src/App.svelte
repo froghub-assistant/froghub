@@ -11,13 +11,13 @@
   import { personality } from './lib/personalities.js'
   import { settings, saveSettings, pullShared } from './lib/settings.svelte.js'
   import { house } from './lib/house.svelte.js'
-  import { setTwoTone } from './lib/icons.js'
   import { alarm, startAlarms, finish as finishAlarm } from './lib/alarms.svelte.js'
   import { voice, startVoice, startTextOnly, stopVoice, setPersonality, tapToTalk, askText, sayUnasked, setMicMuted, setVolume } from './lib/assist.svelte.js'
   import { startAnnouncements, otherDisplays, sendMessage } from './lib/announce.js'
   import { player, playAudio, stopAudio, setAudioVolume, duck } from './lib/player.svelte.js'
   import { music, startMusic, stopMusic, unlockMusic, duckMusic, stopMusicPlaying } from './lib/music.svelte.js'
-  import { AlarmClock, Hand, Keyboard, ListMusic, LockOpen, Maximize2, Megaphone, Mic, MicOff, Minimize2, Music, Settings as Gear, Square, Timer, TriangleAlert, Volume, Volume1, Volume2, X } from '@lucide/svelte'
+  import Icon from './lib/Icon.svelte'
+  import { icons as I } from './lib/icons.js'
 
   const WEATHER = {
     'clear-night': '🌙', cloudy: '☁️', fog: '🌫️', hail: '🌨️', lightning: '🌩️', 'lightning-rainy': '⛈️',
@@ -55,7 +55,6 @@
   let messageNote = $state('')
 
   let p = $derived(personality(settings.personality))
-  $effect(() => setTwoTone(settings.iconStyle === 'two-tone'))
   // This display, as the other displays see it (for messages): its own name, or its room's.
   let areaName = $derived((areas.find((a) => a.area_id === settings.area) || {}).name || '')
   let me = $derived({
@@ -713,8 +712,8 @@
     {#if card}
       <div class="card" class:full={cardFull} onscroll={keepCard}>
         <div class="card-buttons">
-          <button onclick={() => ((cardFull = !cardFull), keepCard())} aria-label={cardFull ? 'Smaller' : 'Full screen'}>{#if cardFull}<Minimize2 size={22} />{:else}<Maximize2 size={22} />{/if}</button>
-          <button onclick={() => (card = null)} aria-label="Close"><X size={24} /></button>
+          <button onclick={() => ((cardFull = !cardFull), keepCard())} aria-label={cardFull ? 'Smaller' : 'Full screen'}>{#if cardFull}<Icon of={I.Minimize2} size={22} />{:else}<Icon of={I.Maximize2} size={22} />{/if}</button>
+          <button onclick={() => (card = null)} aria-label="Close"><Icon of={I.X} size={24} /></button>
         </div>
         {#if card.emoji}<div class="card-emoji">{card.emoji}</div>{/if}
         {#if card.title}<h2>{card.title}</h2>{/if}
@@ -748,12 +747,12 @@
     {/if}
   </section>
 
-  <button class="keyboard" onclick={() => ((typing = !typing), (messaging = false))} aria-label="Type to {p.name}"><Keyboard size={30} /></button>
-  <button class="megaphone" onclick={openMessaging} aria-label="Send a message to the other Frog Hubs"><Megaphone size={30} /></button>
+  <button class="keyboard" onclick={() => ((typing = !typing), (messaging = false))} aria-label="Type to {p.name}"><Icon of={I.Keyboard} size={30} /></button>
+  <button class="megaphone" onclick={openMessaging} aria-label="Send a message to the other Frog Hubs"><Icon of={I.Megaphone} size={30} /></button>
   {#if connection !== 'none' && !DEMO}
-    <button class="mic" class:muted={voice.muted} onclick={toggleMic} aria-label={voice.muted ? 'Turn the microphone on' : 'Turn the microphone off'}>{#if voice.muted}<MicOff size={30} />{:else}<Mic size={30} />{/if}</button>
+    <button class="mic" class:muted={voice.muted} onclick={toggleMic} aria-label={voice.muted ? 'Turn the microphone on' : 'Turn the microphone off'}>{#if voice.muted}<Icon of={I.MicOff} size={30} />{:else}<Icon of={I.Mic} size={30} />{/if}</button>
   {/if}
-  <button class="speaker" class:low={connection === 'none' || DEMO} onclick={() => (showVolume = !showVolume)} aria-label="Volume">{#if settings.volume === 0}<Volume size={30} />{:else if settings.volume < 50}<Volume1 size={30} />{:else}<Volume2 size={30} />{/if}</button>
+  <button class="speaker" class:low={connection === 'none' || DEMO} onclick={() => (showVolume = !showVolume)} aria-label="Volume">{#if settings.volume === 0}<Icon of={I.Volume} size={30} />{:else if settings.volume < 50}<Icon of={I.Volume1} size={30} />{:else}<Icon of={I.Volume2} size={30} />{/if}</button>
   {#if showVolume}
     <div class="volume" class:low={connection === 'none' || DEMO}>
       <input type="range" min="0" max="100" step="5" bind:value={settings.volume} onchange={saveSettings} aria-label="Volume" />
@@ -761,9 +760,9 @@
     </div>
   {/if}
   {#if connection === 'ok' && maEntry && musicPlayers.length && !DEMO}
-    <button class="find-music" onclick={() => ((showMusic = true), (showVolume = false))} aria-label="Find music"><ListMusic size={30} /></button>
+    <button class="find-music" onclick={() => ((showMusic = true), (showVolume = false))} aria-label="Find music"><Icon of={I.ListMusic} size={30} /></button>
   {/if}
-  <button class="gear" onclick={openSettings} aria-label="Settings"><Gear size={24} /></button>
+  <button class="gear" onclick={openSettings} aria-label="Settings"><Icon of={I.Gear} size={24} /></button>
   {#if showPlaying && herePlayer}
     <NowPlaying {ha} id={herePlayer.id} entity={states[herePlayer.id]} onClose={() => (showPlaying = false)} onFind={() => ((showPlaying = false), (showMusic = true))} />
   {/if}
@@ -776,7 +775,7 @@
       <!-- svelte-ignore a11y_autofocus -->
       <input bind:value={typed} placeholder="Type to {p.name}…" autofocus enterkeyhint="send" maxlength="500" />
       <button type="submit" disabled={!typed.trim() || busy}>Send</button>
-      <button type="button" class="close" onclick={() => (typing = false)} aria-label="Close"><X size={20} /></button>
+      <button type="button" class="close" onclick={() => (typing = false)} aria-label="Close"><Icon of={I.X} size={20} /></button>
     </form>
   {/if}
 
@@ -789,27 +788,27 @@
       <!-- svelte-ignore a11y_autofocus -->
       <input bind:value={message} placeholder={messageNote || 'Message for the other Frog Hubs…'} autofocus enterkeyhint="send" maxlength="300" />
       <button type="submit" disabled={!message.trim()}>Send</button>
-      <button type="button" class="close" onclick={() => (messaging = false)} aria-label="Close"><X size={20} /></button>
+      <button type="button" class="close" onclick={() => (messaging = false)} aria-label="Close"><Icon of={I.X} size={20} /></button>
     </form>
     {#if messageNote && messageNote !== 'Sending…'}<p class="message-note">{messageNote}</p>{/if}
   {/if}
 
   {#if adminToken}
-    <div class="admin"><LockOpen size={16} /> Admin mode <button onclick={lockAdmin}>Lock</button></div>
+    <div class="admin"><Icon of={I.LockOpen} size={16} /> Admin mode <button onclick={lockAdmin}>Lock</button></div>
   {/if}
   {#if player.playing || player.error}
     <div class="playing">
-      {#if player.playing}<Music size={18} /><span>{player.title}</span>{:else}<TriangleAlert size={18} /><span>{player.error}</span>{/if}
-      {#if player.playing}<button onclick={stopAudio} aria-label="Stop"><Square size={14} fill="currentColor" /></button>{:else}<button onclick={() => (player.error = '')} aria-label="Close"><X size={16} /></button>{/if}
+      {#if player.playing}<Icon of={I.Music} size={18} /><span>{player.title}</span>{:else}<Icon of={I.TriangleAlert} size={18} /><span>{player.error}</span>{/if}
+      {#if player.playing}<button onclick={stopAudio} aria-label="Stop"><Icon of={I.Square} size={14} fill="currentColor" /></button>{:else}<button onclick={() => (player.error = '')} aria-label="Close"><Icon of={I.X} size={16} /></button>{/if}
     </div>
   {:else if music.playing}
     <div class="playing">
       {#if herePlayer}
-        <button class="what" onclick={() => (showPlaying = true)}><Music size={18} /><span>{music.title || 'Music Assistant'}{music.artist ? ` · ${music.artist}` : ''}</span></button>
+        <button class="what" onclick={() => (showPlaying = true)}><Icon of={I.Music} size={18} /><span>{music.title || 'Music Assistant'}{music.artist ? ` · ${music.artist}` : ''}</span></button>
       {:else}
-        <Music size={18} /><span>{music.title || 'Music Assistant'}{music.artist ? ` · ${music.artist}` : ''}</span>
+        <Icon of={I.Music} size={18} /><span>{music.title || 'Music Assistant'}{music.artist ? ` · ${music.artist}` : ''}</span>
       {/if}
-      <button onclick={stopMusicPlaying} aria-label="Stop"><Square size={14} fill="currentColor" /></button>
+      <button onclick={stopMusicPlaying} aria-label="Stop"><Icon of={I.Square} size={14} fill="currentColor" /></button>
     </div>
   {/if}
 
@@ -819,7 +818,7 @@
 
   {#if needsTap && !showSettings && !showOnboarding}
     <button class="tap" onclick={tapToStart}>
-      <Hand size={44} />
+      <Icon of={I.Tap} size={44} />
       <span>Tap once to wake {p.name} up</span>
       <small>(the browser needs one tap before it lets me use the microphone and speaker)</small>
     </button>
@@ -827,7 +826,7 @@
 
   {#if alarm.ringing}
     <div class="alarm">
-      <div class="alarm-icon">{#if alarm.ringing.timer}<Timer size={90} />{:else}<AlarmClock size={90} />{/if}</div>
+      <div class="alarm-icon">{#if alarm.ringing.timer}<Icon of={I.Timer} size={90} />{:else}<Icon of={I.AlarmClock} size={90} />{/if}</div>
       <div class="alarm-label">{alarm.ringing.label}</div>
       <div class="alarm-time">{now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: TZ })}</div>
       <div class="alarm-buttons">
