@@ -101,6 +101,14 @@
     </div>
   </label>
 
+  <label>
+    Icons
+    <select bind:value={draft.iconStyle}>
+      <option value="outline">Outline</option>
+      <option value="two-tone">Two-tone</option>
+    </select>
+  </label>
+
   <label>Who's it for? <input bind:value={draft.name} /></label>
 
   <label>

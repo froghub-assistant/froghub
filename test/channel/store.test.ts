@@ -72,9 +72,9 @@ describe('shared settings', () => {
 
   test('only the synced settings are published', async () => {
     const saved = await read(handleStore(request('POST', '/api/settings', {
-      settings: { personality: 'verity', nightStart: 20, haUrl: 'http://ha.test:8123', area: 'kitchen', name: 'Sam', token: 'sneaky' },
+      settings: { personality: 'verity', iconStyle: 'two-tone', nightStart: 20, haUrl: 'http://ha.test:8123', area: 'kitchen', name: 'Sam', token: 'sneaky' },
     }, await asAdmin()), '/api/settings'))
-    expect(saved.settings).toEqual({ personality: 'verity', nightStart: 20, haUrl: 'http://ha.test:8123' })
+    expect(saved.settings).toEqual({ personality: 'verity', iconStyle: 'two-tone', nightStart: 20, haUrl: 'http://ha.test:8123' })
     expect(sharedSettings()).toEqual(saved.settings)
   })
 

@@ -11,6 +11,7 @@
   import { personality } from './lib/personalities.js'
   import { settings, saveSettings, pullShared } from './lib/settings.svelte.js'
   import { house } from './lib/house.svelte.js'
+  import { setTwoTone } from './lib/icons.js'
   import { alarm, startAlarms, finish as finishAlarm } from './lib/alarms.svelte.js'
   import { voice, startVoice, startTextOnly, stopVoice, setPersonality, tapToTalk, askText, sayUnasked, setMicMuted, setVolume } from './lib/assist.svelte.js'
   import { startAnnouncements, otherDisplays, sendMessage } from './lib/announce.js'
@@ -54,6 +55,7 @@
   let messageNote = $state('')
 
   let p = $derived(personality(settings.personality))
+  $effect(() => setTwoTone(settings.iconStyle === 'two-tone'))
   // This display, as the other displays see it (for messages): its own name, or its room's.
   let areaName = $derived((areas.find((a) => a.area_id === settings.area) || {}).name || '')
   let me = $derived({

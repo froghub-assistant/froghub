@@ -50,6 +50,12 @@ voice on.
 Each display has a random id and a name (Settings → "This display's name", by default its room's name). The name is
 how you send it messages or announcements, and the room decides which devices it can control.
 
+## Icons
+
+Settings → Icons picks outline icons (the default) or two-tone ones, where the closed shapes in each icon get a soft
+fill in the personality's colour. Like the personality, it's shared with the other displays when a grown-up saves in
+admin mode.
+
 ## Grown-ups' displays
 
 Admin Settings → Grown-ups display marks just that display (kept on the server by its id), so the assistant drops

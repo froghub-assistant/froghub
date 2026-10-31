@@ -18,3 +18,13 @@ button {
   flex: none;
   vertical-align: middle;
 }
+
+/* Two-tone icons (Settings → Icons): closed shapes get a soft fill in the accent colour. icons.js marks the paths */
+.two-tone .lucide rect,
+.two-tone .lucide circle,
+.two-tone .lucide ellipse,
+.two-tone .lucide polygon,
+.two-tone .lucide path[data-shape='closed'] {
+  fill: var(--accent, currentColor);
+  fill-opacity: 0.35;
+}

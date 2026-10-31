@@ -8,6 +8,7 @@ const defaults = {
   haUrl: '', // filled from the server's instance settings during the welcome
   token: '',
   personality: 'frog', // the default look, until someone picks another
+  iconStyle: 'outline', // outline or two-tone (icons.js)
   name: '', // who it's for (per display)
   area: '', // area id for the buttons and what the assistant may control (picked per display)
   nightStart: 21,
@@ -36,7 +37,7 @@ const defaults = {
   maSpeaker: true, // be a Music Assistant speaker, when the server has one (music.svelte.js)
 }
 
-export const SYNCED = ['personality', 'nightStart', 'nightEnd', 'haUrl'] // not area or name: each display has its own room and person
+export const SYNCED = ['personality', 'iconStyle', 'nightStart', 'nightEnd', 'haUrl'] // not area or name: each display has its own room and person
 
 function load() {
   try {
