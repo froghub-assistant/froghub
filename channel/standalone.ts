@@ -15,6 +15,8 @@
  *   FROGHUB_FALLBACK_URL    OpenAI-compatible base URL, e.g. http://192.168.1.20:1234/v1 (optional)
  *   FROGHUB_FALLBACK_MODEL  model name there
  *   FROGHUB_FALLBACK_KEY    its API key, if it wants one (OpenAI does; LM Studio and Ollama don't)
+ *   FROGHUB_FALLBACK_BIG_MODEL  a bigger model at the same OpenAI-compatible API that think_harder hands hard
+ *                           questions to (optional; without it the fallback can't think harder)
  *   FROGHUB_FALLBACK_TOOLS  "basic" offers the local model only reply, memory and web search, for a small model
  *                           that gets lost among many tools (default: all of them)
  *   FROGHUB_SEARCH_URL      a SearXNG instance for the local model's web search (default DuckDuckGo; see websearch.ts)
@@ -42,6 +44,7 @@ const BIG_MODEL = bigModel('claude-sonnet-5-5')
 const FALLBACK_URL = (process.env.FROGHUB_FALLBACK_URL || '').replace(/\/+$/, '')
 const FALLBACK_MODEL = process.env.FROGHUB_FALLBACK_MODEL || ''
 const FALLBACK_KEY = process.env.FROGHUB_FALLBACK_KEY || ''
+const FALLBACK_BIG_MODEL = (process.env.FROGHUB_FALLBACK_BIG_MODEL || '').trim()
 const PROMPT_FILE = process.env.FROGHUB_PROMPT || join(homedir(), '.config', 'froghub', 'assistant.md')
 const FALLBACK_ALL = process.env.FROGHUB_FALLBACK_TOOLS !== 'basic'
 const TIMEOUT_MS = 40_000
@@ -172,8 +175,10 @@ async function askClaude(system: string, messages: Turn[], from: Screen | undefi
   throw new Error('no reply from the model')
 }
 
-/** Asks the local OpenAI-compatible model, running the tools it calls, until it replies. */
-async function askFallback(system: string, messages: Turn[], from: Screen | undefined): Promise<Reply> {
+/** Asks the OpenAI-compatible model, running the tools it calls, until it replies (or hands the question to
+ * FALLBACK_BIG_MODEL). */
+async function askFallback(system: string, messages: Turn[], from: Screen | undefined, model = FALLBACK_MODEL): Promise<Reply> {
+  const canThink = Boolean(FALLBACK_BIG_MODEL) && model !== FALLBACK_BIG_MODEL
   const allowed = policy()
   const offered: Tool[] = [REPLY_TOOL, ...(allowed.memory ? memoryTools : []), ...(allowed.webSearch ? [webSearchTool] : []),
     ...(FALLBACK_ALL ? tools({ requestIds: false, think: false }) : [])]
@@ -184,11 +189,14 @@ async function askFallback(system: string, messages: Turn[], from: Screen | unde
       method: 'POST',
       headers: { 'content-type': 'application/json', ...(FALLBACK_KEY ? { authorization: `Bearer ${FALLBACK_KEY}` } : {}) },
       body: JSON.stringify({
-        model: FALLBACK_MODEL,
+        model,
         // OpenAI's own API wants the newer name (its reasoning models refuse max_tokens); local servers the older one
         ...(new URL(FALLBACK_URL).hostname === 'api.openai.com' ? { max_completion_tokens: 600 } : { max_tokens: 600 }),
         messages: convo,
-        tools: offered.map(t => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.inputSchema } })),
+        tools: [
+          ...offered.map(t => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.inputSchema } })),
+          ...(canThink ? [{ type: 'function', function: { name: THINK_TOOL.name, description: THINK_TOOL.description, parameters: THINK_TOOL.input_schema } }] : []),
+        ],
         tool_choice: 'required',
       }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
@@ -202,6 +210,11 @@ async function askFallback(system: string, messages: Turn[], from: Screen | unde
       } catch {
         return {}
       }
+    }
+    const think = canThink ? calls.find(c => c.function.name === 'think_harder') : undefined
+    if (think) {
+      log(`thinking harder with ${FALLBACK_BIG_MODEL}: ${clean(args(think).why, 200)}`)
+      return askFallback(system, messages, from, FALLBACK_BIG_MODEL)
     }
     const results: unknown[] = []
     for (const c of calls.filter(c => c.function.name !== 'reply')) {
@@ -258,4 +271,4 @@ async function askAssistant(content: string, meta: Record<string, string>, from?
 }
 
 serve(askAssistant, { port: PORT, idleTimeout: 60, ping: () => ({ ok: true, brain: API_KEY ? MODEL : FALLBACK_MODEL || 'none' }) })
-log(`standalone brain: ${API_KEY ? `Claude ${MODEL}` : 'no API key'}${FALLBACK_URL ? `, fallback ${FALLBACK_MODEL}` : ''}`)
+log(`standalone brain: ${API_KEY ? `Claude ${MODEL}` : 'no API key'}${FALLBACK_URL ? `, fallback ${FALLBACK_MODEL}${FALLBACK_BIG_MODEL ? ` (thinks harder with ${FALLBACK_BIG_MODEL})` : ''}` : ''}`)

@@ -41,7 +41,9 @@ The assistant runs on Haiku, which is quick. For what needs real thought (homewo
 it can call `think_harder`, which hands that one question to a bigger model and puts the answer in its own words.
 
 - The Claude Code brain runs a one-shot, locked-down `claude -p` (no tools, no settings, no saved session; given 25 s).
-- The API brain asks the bigger model again with the whole conversation.
+- The API brain asks the bigger model again with the whole conversation. On an OpenAI-compatible API (no Anthropic
+  key, or when Claude fails) that's `FROGHUB_FALLBACK_BIG_MODEL`, a bigger model at the same API; without it, the
+  fallback answers everything itself.
 
 `FROGHUB_BIG_MODEL` picks the bigger model (by default Sonnet; `none` turns it off). On a subscription, Sonnet uses up
 the limits faster than Haiku.

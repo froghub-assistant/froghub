@@ -29,6 +29,7 @@ rather than in the service unit.
 | `FROGHUB_FALLBACK_URL` | An OpenAI-compatible API's base URL, used without an Anthropic key or when it fails: LM Studio (`http://<pc>:1234/v1`), Ollama (`http://<pc>:11434/v1`) or OpenAI (`https://api.openai.com/v1`) | |
 | `FROGHUB_FALLBACK_MODEL` | The model name there, e.g. `qwen3:8b` on Ollama | |
 | `FROGHUB_FALLBACK_KEY` | Its API key, if it wants one (OpenAI does; LM Studio and Ollama don't) | |
+| `FROGHUB_FALLBACK_BIG_MODEL` | A bigger model at the same OpenAI-compatible API for `think_harder`; without it the fallback doesn't think harder | |
 | `FROGHUB_FALLBACK_TOOLS` | `basic` offers that model only reply, memory and web search, for a small model that gets lost among many tools | all of them |
 | `FROGHUB_SEARCH_URL` | A [SearXNG](https://docs.searxng.org) instance for that model's web search, with `format=json` allowed | DuckDuckGo |
 | `FROGHUB_PROMPT` | The assistant's rules | `~/.config/froghub/assistant.md` |
