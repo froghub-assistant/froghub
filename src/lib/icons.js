@@ -5,6 +5,7 @@ import Alarm from 'phosphor-svelte/lib/AlarmIcon'
 import ArrowsClockwise from 'phosphor-svelte/lib/ArrowsClockwiseIcon'
 import ArrowsIn from 'phosphor-svelte/lib/ArrowsInIcon'
 import ArrowsOut from 'phosphor-svelte/lib/ArrowsOutIcon'
+import Broom from 'phosphor-svelte/lib/BroomIcon'
 import Check from 'phosphor-svelte/lib/CheckIcon'
 import Confetti from 'phosphor-svelte/lib/ConfettiIcon'
 import DeviceMobile from 'phosphor-svelte/lib/DeviceMobileIcon'
@@ -53,6 +54,7 @@ const pair = (lucide, phosphor) => ({ lucide, phosphor })
 
 export const icons = {
   AlarmClock: pair(L.AlarmClock, Alarm),
+  Broom: pair(L.Broom, Broom),
   Check: pair(L.Check, Check),
   Disc3: pair(L.Disc3, Disc),
   Fan: pair(L.Fan, Fan),

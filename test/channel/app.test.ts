@@ -23,6 +23,21 @@ beforeEach(() => {
   rmSync(join(CONFIG, 'policy.json'), { force: true })
 })
 
+describe('/api/clear', () => {
+  test("hands the display's conversation to the brain to forget", async () => {
+    const cleared: string[] = []
+    const withClear = routes(ask, undefined, id => void cleared.push(id))
+    expect(await read(withClear(request('POST', '/api/clear', { conversation_id: 'froghub-abc' })))).toEqual({ ok: true })
+    expect(await read(withClear(request('POST', '/api/clear', {})))).toEqual({ ok: true })
+    expect(cleared).toEqual(['froghub-abc', 'default'])
+    expect(asked).toEqual([]) // nothing goes to the assistant itself
+  })
+
+  test('a brain that keeps no conversations just says ok', async () => {
+    expect(await read(post('/api/clear', { conversation_id: 'x' }))).toEqual({ ok: true })
+  })
+})
+
 describe('/api/ask', () => {
   test('passes on what was said, the room, the other displays and who is asking', async () => {
     await poll('kitchen1', 'Kitchen')

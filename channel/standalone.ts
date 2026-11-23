@@ -270,5 +270,5 @@ async function askAssistant(content: string, meta: Record<string, string>, from?
   return answer
 }
 
-serve(askAssistant, { port: PORT, idleTimeout: 60, ping: () => ({ ok: true, brain: API_KEY ? MODEL : FALLBACK_MODEL || 'none' }) })
+serve(askAssistant, { port: PORT, idleTimeout: 60, clear: id => void conversations.delete(id), ping: () => ({ ok: true, brain: API_KEY ? MODEL : FALLBACK_MODEL || 'none' }) })
 log(`standalone brain: ${API_KEY ? `Claude ${MODEL}` : 'no API key'}${FALLBACK_URL ? `, fallback ${FALLBACK_MODEL}${FALLBACK_BIG_MODEL ? ` (thinks harder with ${FALLBACK_BIG_MODEL})` : ''}` : ''}`)

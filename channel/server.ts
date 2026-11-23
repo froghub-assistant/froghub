@@ -11,8 +11,8 @@
  * minutes, and 5 wrong PINs lock unlocking for 5 minutes.
  *
  * Besides answering, the assistant can think harder (thinker.ts), announce on the displays unprompted, and schedule
- * jobs for later (schedule.ts). After FROGHUB_CLEAR_AFTER quiet minutes it gets a fresh conversation (/clear typed
- * into its tmux), so old chat doesn't pile up; its memory files stay.
+ * jobs for later (schedule.ts). After FROGHUB_CLEAR_AFTER quiet minutes, or when someone taps 🧹 on a display, it gets
+ * a fresh conversation (/clear typed into its tmux), so old chat doesn't pile up; its memory files stay.
  *
  * Environment:
  *   FROGHUB_PORT         listen port on 127.0.0.1 (default 8790)
@@ -127,6 +127,7 @@ async function askAssistant(content: string, meta: Record<string, string>, from?
       displays.delete(request_id)
       askedFrom.delete(request_id)
       resolve(null)
+      if (clearWanted) setTimeout(() => clearNow('asked for on a display'), 2000)
     }, TIMEOUT_MS)
     pending.set(request_id, r => {
       clearTimeout(timer)
@@ -134,23 +135,31 @@ async function askAssistant(content: string, meta: Record<string, string>, from?
       pending.delete(request_id)
       askedFrom.delete(request_id)
       resolve(r)
+      if (clearWanted) setTimeout(() => clearNow('asked for on a display'), 2000) // once it's finished its turn
     })
   })
   await mcp.notification({ method: 'notifications/claude/channel', params: { content, meta: { request_id, ...meta } } })
   return reply
 }
 
-// A fresh conversation after a quiet spell: /clear typed into the assistant's tmux (setup/agent/start runs it there),
-// only while no request is open. Its memory files and CLAUDE.md come back with it.
+// A fresh conversation: /clear typed into the assistant's tmux (setup/agent/start runs it there), after a quiet spell
+// or when someone taps 🧹 on a display. Never while a request is open (it waits for that to finish instead), and not
+// again if nothing's been asked since the last one. Its memory files and CLAUDE.md come back with it.
 let lastActivity = Date.now()
 let lastClear = Date.now()
+let clearWanted = false
+function clearNow(why: string): void {
+  if (pending.size) return void (clearWanted = true)
+  clearWanted = false
+  if (lastClear >= lastActivity) return
+  const tmux = (...args: string[]) => spawnSync('tmux', ['-L', 'froghub', ...args]).status === 0
+  if (tmux('send-keys', '-t', 'froghub', '-l', '/clear') && tmux('send-keys', '-t', 'froghub', 'Enter')) log(`${why}: cleared the conversation`)
+  lastClear = Date.now()
+}
 if (CLEAR_AFTER_MS > 0) {
   setInterval(() => {
-    if (pending.size || lastClear >= lastActivity || Date.now() - lastActivity < CLEAR_AFTER_MS) return
-    const tmux = (...args: string[]) => spawnSync('tmux', ['-L', 'froghub', ...args]).status === 0
-    if (tmux('send-keys', '-t', 'froghub', '-l', '/clear') && tmux('send-keys', '-t', 'froghub', 'Enter')) log('quiet for a while: cleared the conversation')
-    lastClear = Date.now()
+    if (!pending.size && Date.now() - lastActivity >= CLEAR_AFTER_MS) clearNow('quiet for a while')
   }, 60_000)
 }
 
-serve(askAssistant, { port: PORT, idleTimeout: Math.min(255, TIMEOUT_MS / 1000 + 10) })
+serve(askAssistant, { port: PORT, idleTimeout: Math.min(255, TIMEOUT_MS / 1000 + 10), clear: () => clearNow('asked for on a display') })

@@ -168,6 +168,23 @@ export function askText(text) {
   return true
 }
 
+// The 🧹 button: forget this conversation, here and on the server (for the Claude Code brain that's the whole house's
+// conversation; its memory stays). Not while it's thinking or speaking.
+export function clearConversation() {
+  if (!options || ['thinking', 'speaking'].includes(voice.status)) return false
+  const id = conversation.id
+  conversation = { id: null, at: 0 }
+  voice.heard = ''
+  voice.reply = ''
+  const context = options.getContext()
+  fetch('/api/clear', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ conversation_id: id, device: context.device }),
+  }).catch(() => {})
+  return true
+}
+
 // The wake word recorder borrows the microphone the voice loop already has open (the same audio the wake word hears).
 // Returns a function that stops it, or null if the microphone isn't running yet.
 export function tapMic(fn) {

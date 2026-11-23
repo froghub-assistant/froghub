@@ -24,6 +24,17 @@ import { handleLists } from './lists.ts'
  * when they apply) and waits for its reply; null if it didn't answer in time. */
 export type Ask = (content: string, meta: Record<string, string>, from?: Screen) => Promise<Reply | null>
 
+/** Forgets a conversation: the 🧹 button on a display. The Claude Code brain has one conversation for the whole house,
+ * so it starts afresh (memory files stay); the standalone brain forgets that display's last few exchanges. */
+export type Clear = (conversationId: string) => void
+
+// POST /api/clear {conversation_id}: the display's 🧹 button, for a fresh conversation
+async function handleClear(req: Request, clear?: Clear): Promise<Response> {
+  const body = await req.json().catch(() => ({}))
+  clear?.(clean(body?.conversation_id, 60) || 'default')
+  return json({ ok: true })
+}
+
 // POST /api/ask: what was said (or typed) at a display
 async function handleAsk(req: Request, ask: Ask): Promise<Response> {
   let body: Record<string, unknown>
@@ -142,13 +153,14 @@ export async function runJob(ask: Ask, job: Job): Promise<void> {
 }
 
 /** The request handler: every route, with `ask` for the ones that need the assistant (each one logged). */
-export function routes(unlogged: Ask, ping: () => Record<string, unknown> = () => ({ ok: true })) {
+export function routes(unlogged: Ask, ping: () => Record<string, unknown> = () => ({ ok: true }), clear?: Clear) {
   const ask = logged(unlogged)
   return async (req: Request): Promise<Response> => {
     const { pathname } = new URL(req.url)
     if (req.method === 'GET' && pathname === '/api/ping') return json(ping())
     if (req.method === 'GET' && pathname === '/api/instance') return handleInstance()
     if (req.method === 'POST' && pathname === '/api/ask') return handleAsk(req, ask)
+    if (req.method === 'POST' && pathname === '/api/clear') return handleClear(req, clear)
     if (req.method === 'POST' && pathname === '/api/admin/unlock') return handleUnlock(req)
     if (req.method === 'POST' && pathname === '/api/admin/check') return handleAdminCheck(req)
     if (req.method === 'POST' && pathname === '/api/admin/lock') return handleLock(req)
@@ -176,9 +188,9 @@ export function routes(unlogged: Ask, ping: () => Record<string, unknown> = () =
 
 /** Listens on 127.0.0.1:`port` (only reachable through Caddy, which only admits the home network) and runs the
  * scheduled jobs. */
-export function serve(ask: Ask, o: { port: number; idleTimeout: number; ping?: () => Record<string, unknown> }): void {
+export function serve(ask: Ask, o: { port: number; idleTimeout: number; ping?: () => Record<string, unknown>; clear?: Clear }): void {
   try {
-    Bun.serve({ port: o.port, hostname: '127.0.0.1', idleTimeout: o.idleTimeout, fetch: routes(ask, o.ping) })
+    Bun.serve({ port: o.port, hostname: '127.0.0.1', idleTimeout: o.idleTimeout, fetch: routes(ask, o.ping, o.clear) })
     log(`listening on 127.0.0.1:${o.port}`)
   } catch (err) {
     log(`could not listen on :${o.port}: ${err}`)

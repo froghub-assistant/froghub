@@ -12,7 +12,7 @@
   import { settings, saveSettings, pullShared } from './lib/settings.svelte.js'
   import { house } from './lib/house.svelte.js'
   import { alarm, startAlarms, finish as finishAlarm } from './lib/alarms.svelte.js'
-  import { voice, startVoice, startTextOnly, stopVoice, setPersonality, tapToTalk, askText, sayUnasked, setMicMuted, setVolume } from './lib/assist.svelte.js'
+  import { voice, startVoice, startTextOnly, stopVoice, setPersonality, tapToTalk, askText, clearConversation, sayUnasked, setMicMuted, setVolume } from './lib/assist.svelte.js'
   import { startAnnouncements, otherDisplays, sendMessage } from './lib/announce.js'
   import { player, playAudio, stopAudio, setAudioVolume, duck } from './lib/player.svelte.js'
   import { music, startMusic, stopMusic, unlockMusic, duckMusic, stopMusicPlaying } from './lib/music.svelte.js'
@@ -749,6 +749,7 @@
 
   <button class="keyboard" onclick={() => ((typing = !typing), (messaging = false))} aria-label="Type to {p.name}"><Icon of={I.Keyboard} size={30} /></button>
   <button class="megaphone" onclick={openMessaging} aria-label="Send a message to the other Frog Hubs"><Icon of={I.Megaphone} size={30} /></button>
+  <button class="broom" onclick={() => clearConversation() && ((typing = false), (messaging = false))} aria-label="Start a new conversation"><Icon of={I.Broom} size={30} /></button>
   {#if connection !== 'none' && !DEMO}
     <button class="mic" class:muted={voice.muted} onclick={toggleMic} aria-label={voice.muted ? 'Turn the microphone on' : 'Turn the microphone off'}>{#if voice.muted}<Icon of={I.MicOff} size={30} />{:else}<Icon of={I.Mic} size={30} />{/if}</button>
   {/if}
@@ -1017,6 +1018,7 @@
   /* The round-the-edge buttons hold Lucide icons, drawn in the text colour */
   .keyboard,
   .megaphone,
+  .broom,
   .mic,
   .speaker,
   .gear {
@@ -1033,7 +1035,8 @@
     font-size: 30px;
     opacity: 0.7;
   }
-  .megaphone {
+  .megaphone,
+  .broom {
     position: absolute;
     left: 64px;
     bottom: 10px;
@@ -1042,10 +1045,13 @@
     font-size: 30px;
     opacity: 0.7;
   }
+  .broom {
+    left: 114px;
+  }
   .mic,
   .speaker {
     position: absolute;
-    left: 114px;
+    left: 164px;
     bottom: 10px;
     border: 0;
     background: none;
@@ -1053,11 +1059,11 @@
     opacity: 0.7;
   }
   .speaker {
-    left: 164px;
+    left: 214px;
   }
   .find-music {
     position: absolute;
-    left: 214px;
+    left: 264px;
     bottom: 10px;
     display: flex;
     padding: 4px;
@@ -1067,14 +1073,14 @@
     opacity: 0.7;
   }
   .speaker.low {
-    left: 114px;
+    left: 164px;
   }
   .mic.muted {
     opacity: 1;
   }
   .volume {
     position: absolute;
-    left: 110px;
+    left: 160px;
     bottom: 64px;
     z-index: 10;
     display: flex;
@@ -1085,7 +1091,7 @@
     color: var(--fg);
   }
   .volume.low {
-    left: 60px;
+    left: 110px;
   }
   .volume input {
     width: 220px;
