@@ -1,5 +1,5 @@
 <script>
-  import { personalities } from './personalities.js'
+  import { personalityList } from './customs.svelte.js'
   import { settings, saveSettings, pushShared } from './settings.svelte.js'
   import Recorder from './Recorder.svelte'
   import { POLICY } from './policy.js'
@@ -112,7 +112,7 @@
         <section class="card">
           <h2>Personality</h2>
           <div class="choices">
-            {#each Object.entries(personalities) as [id, p] (id)}
+            {#each personalityList() as [id, p] (id)}
               <button class="choice" class:picked={draft.personality === id} style="--c: {p.colours.accent}" onclick={() => (draft.personality = id)}>
                 <i class="dot"></i>{p.name}
               </button>

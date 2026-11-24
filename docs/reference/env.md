@@ -12,6 +12,8 @@ rather than in the service unit.
 | `FROGHUB_RECIPEAPI_KEY` | A recipeapi.io key, overriding `~/.config/froghub/recipeapi.key` | |
 | `FROGHUB_MEALDB_KEY` | Your own TheMealDB key | `1` (the free one) |
 | `FROGHUB_FREESOUND_KEY` | A Freesound API key, overriding `~/.config/froghub/freesound.key` | |
+| `FROGHUB_BUILDER` | `api` makes the personality builder use the Anthropic API even when Claude Code is installed | |
+| `FROGHUB_BUILDER_MODEL` | The model that makes personalities | `opus` (Claude Code), `claude-opus-5-5` (API) |
 
 ## The Claude Code brain
 

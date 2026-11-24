@@ -3,7 +3,7 @@
  * (a model API) each give `serve` their way of asking the assistant something, and everything else (alarms,
  * announcements, displays, pairing, settings, scheduled jobs...) is here.
  */
-import { type Reply, PERSONALITIES, adminValid, clean, deviceLines, handleAdminCheck, handleLock, handleUnlock, json, log, londonTime } from './common.ts'
+import { type Reply, adminValid, clean, deviceLines, handleAdminCheck, handleLock, handleUnlock, json, log, londonTime } from './common.ts'
 import { handleAlarms } from './alarms.ts'
 import { handleStore, isGrownUps, policy, sharedSettings } from './store.ts'
 import { handleRegistry } from './registry.ts'
@@ -19,6 +19,7 @@ import { checkAudioUrl } from './audio.ts'
 import { goodnightOptions } from './goodnight.ts'
 import { handleRadio } from './radio.ts'
 import { handleLists } from './lists.ts'
+import { handlePersonas, knownPersonality, personaNote } from './personas.ts'
 
 /** Hands `content` to the assistant (meta: personality, speaker, time, and kind, mode, audience, conversation_id
  * when they apply) and waits for its reply; null if it didn't answer in time. */
@@ -27,6 +28,15 @@ export type Ask = (content: string, meta: Record<string, string>, from?: Screen)
 /** Forgets a conversation: the 🧹 button on a display. The Claude Code brain has one conversation for the whole house,
  * so it starts afresh (memory files stay); the standalone brain forgets that display's last few exchanges. */
 export type Clear = (conversationId: string) => void
+
+/** `ask`, with a note about who a custom personality is added to the request (personas.ts); the built-in ones are in
+ * the assistant's own instructions. */
+export function withPersonality(ask: Ask): Ask {
+  return (content, meta, from) => {
+    const note = personaNote(meta.personality)
+    return ask(note ? `${content}\n\n${note}` : content, meta, from)
+  }
+}
 
 // POST /api/clear {conversation_id}: the display's 🧹 button, for a fresh conversation
 async function handleClear(req: Request, clear?: Clear): Promise<Response> {
@@ -45,7 +55,7 @@ async function handleAsk(req: Request, ask: Ask): Promise<Response> {
   }
   const text = clean(body.text, 1000)
   if (!text) return json({ error: 'missing text' }, 400)
-  const personality = PERSONALITIES.has(String(body.personality)) ? String(body.personality) : 'frog'
+  const personality = knownPersonality(body.personality)
   const allowed = policy()
   const devices = allowed.devices ? deviceLines(body.devices) : []
   const from = screenFor(body.device)
@@ -83,12 +93,11 @@ async function handleRemember(req: Request, ask: Ask): Promise<Response> {
   const body = await req.json().catch(() => ({}))
   const text = clean(body.text, 1000)
   if (!text) return json({ error: 'nothing to remember' }, 400)
-  const wanted = String(sharedSettings().personality)
   const answer = await ask(
     `${text}\n\n[From the admin page, not a display: a grown-up wants your memory updated. Save, change or forget ` +
       'what they ask with your memory tools (house rules marked as house rules), then reply with one short plain ' +
       'sentence saying what you did.]',
-    { kind: 'admin-page', mode: 'admin', personality: PERSONALITIES.has(wanted) ? wanted : 'frog', speaker: 'a grown-up', time: londonTime() },
+    { kind: 'admin-page', mode: 'admin', personality: knownPersonality(sharedSettings().personality), speaker: 'a grown-up', time: londonTime() },
   )
   if (!answer?.text) return json({ error: 'the assistant did not answer in time' }, 504)
   return json({ ok: true, text: answer.text })
@@ -135,8 +144,7 @@ async function handleAnnounce(req: Request, ask: Ask): Promise<Response> {
 /** Asks the assistant `prompt` as an announcement (or a scheduled job) and announces its reply. */
 async function announceFromPrompt(ask: Ask, prompt: string, kind: string, speaker: string,
   o: { personality?: unknown; area?: string; to?: string; at_night: boolean }): Promise<{ id: number; text: string } | null> {
-  const wanted = String(o.personality ?? sharedSettings().personality)
-  const answer = await ask(prompt, { kind, personality: PERSONALITIES.has(wanted) ? wanted : 'frog', speaker, time: londonTime() })
+  const answer = await ask(prompt, { kind, personality: knownPersonality(o.personality ?? sharedSettings().personality), speaker, time: londonTime() })
   if (!answer?.text) return null
   const id = announce({ text: answer.text, display: answer.display as Display | undefined, actions: answer.actions, area: o.area, to: o.to, at_night: o.at_night })
   return { id, text: answer.text }
@@ -154,7 +162,7 @@ export async function runJob(ask: Ask, job: Job): Promise<void> {
 
 /** The request handler: every route, with `ask` for the ones that need the assistant (each one logged). */
 export function routes(unlogged: Ask, ping: () => Record<string, unknown> = () => ({ ok: true }), clear?: Clear) {
-  const ask = logged(unlogged)
+  const ask = logged(withPersonality(unlogged))
   return async (req: Request): Promise<Response> => {
     const { pathname } = new URL(req.url)
     if (req.method === 'GET' && pathname === '/api/ping') return json(ping())
@@ -169,6 +177,7 @@ export function routes(unlogged: Ask, ping: () => Record<string, unknown> = () =
     if (['/api/announcements', '/api/displays', '/api/announce'].includes(pathname)) return handleAnnouncements(req, pathname)
     if (pathname.startsWith('/api/wakeword/')) return handleSamples(req, pathname)
     if (pathname.startsWith('/api/radio/')) return handleRadio(req, pathname)
+    if (pathname === '/api/personalities' || pathname.startsWith('/api/admin/personalities')) return handlePersonas(req, pathname)
     if (pathname === '/api/admin/displays') return handleRegistry(req, pathname)
     if (pathname === '/api/pair' || pathname === '/api/admin/pair') return handlePair(req, pathname)
     if (pathname === '/api/admin/memory') return handleMemory(req)
@@ -195,6 +204,6 @@ export function serve(ask: Ask, o: { port: number; idleTimeout: number; ping?: (
   } catch (err) {
     log(`could not listen on :${o.port}: ${err}`)
   }
-  const asked = logged(ask)
+  const asked = logged(withPersonality(ask))
   startSchedule(job => runJob(asked, job))
 }

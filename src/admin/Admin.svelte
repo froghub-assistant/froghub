@@ -10,8 +10,9 @@
   import Memory from './Memory.svelte'
   import History from './History.svelte'
   import Voices from './Voices.svelte'
+  import Personalities from './Personalities.svelte'
   import Pair from './Pair.svelte'
-  import { AlarmClock, Brain, Lock, Megaphone, Mic, ScrollText, Shield, Tablet } from '@lucide/svelte'
+  import { AlarmClock, Brain, Lock, Megaphone, Mic, Palette, ScrollText, Shield, Tablet } from '@lucide/svelte'
 
   const TABS = [
     ['displays', Tablet, 'Displays', Displays],
@@ -20,6 +21,7 @@
     ['assistant', Shield, 'Assistant', Assistant],
     ['memory', Brain, 'Memory', Memory],
     ['history', ScrollText, 'History', History],
+    ['personalities', Palette, 'Personalities', Personalities],
     ['voices', Mic, 'Voices', Voices],
   ]
   // A display's pairing QR code opens #pair=<code>: show it on the Displays tab

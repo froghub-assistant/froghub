@@ -71,4 +71,11 @@ expires after a while. Too many wrong PINs lock it for a few minutes.
 | `POST /api/admin/history {clear: true}` | Clear it. Admin only |
 | `POST /api/wakeword/sample?kind=wake\|other&speaker=` | A wake word recording (raw 16-bit 16 kHz mono PCM). Admin only |
 | `GET /api/wakeword/counts` | How many recordings there are. Admin only |
+| `GET /api/personalities` | The custom personalities, as the displays need them (no prompt text) |
+| `GET /api/admin/personalities` | Everything about them, and `builder`: `claude-code`, `api` or `null`. Admin only |
+| `GET /api/admin/personalities/voices` | The Piper voices Home Assistant has: `[{id, name, language}]`. Admin only |
+| `POST /api/admin/personalities/generate {description, feedback?, previous?}` | Start making one (or changing `previous` as `feedback` says): `{job}`. Admin only |
+| `GET /api/admin/personalities/job?id=` | `{status: working \| done \| failed, draft?, error?}`. Admin only |
+| `POST /api/admin/personalities {personality}` | Save one (with its `id` to change it) and make its pipeline: `{personality, voice}`. Admin only |
+| `POST /api/admin/personalities/delete {id}` | Delete one and its pipeline. Admin only |
 | `GET /api/ping` | Whether the server is up |

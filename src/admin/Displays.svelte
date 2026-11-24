@@ -4,7 +4,7 @@
   import { onMount } from 'svelte'
   import { api, ago } from './api.svelte.js'
   import { HomeAssistant } from '../lib/ha.js'
-  import { personalities } from '../lib/personalities.js'
+  import { personalityList, refreshCustoms } from '../lib/customs.svelte.js'
   import { house, houseLoaded } from '../lib/house.svelte.js'
   import { Eraser, Hourglass, Mic, MicOff, Pencil, Sparkles, Trash2, User } from '@lucide/svelte'
 
@@ -77,6 +77,7 @@
   }
 
   onMount(() => {
+    refreshCustoms()
     load()
     loadAreas()
     const timer = setInterval(load, 5000)
@@ -104,7 +105,7 @@
   <p class="muted">{list.filter((d) => d.online).length} on, {list.length} known</p>
   <div class="grid">
     {#each list as d (d.id)}
-      {@const p = personalities[d.personality]}
+      {@const p = personalityList().find(([id]) => id === d.personality)?.[1]}
       <article class="card" class:off={!d.online} style="--pc: {p ? p.colours.accent : 'var(--accent)'}">
         <div class="top">
           <span class="dot" class:on={d.online} title={d.online ? 'On' : 'Off'}></span>

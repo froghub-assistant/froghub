@@ -88,6 +88,15 @@ export function setPersonality(personality) {
   if (!options) return
   options.personality = personality
   updateWakeWord()
+  // A personality made on the admin page gets its pipeline after this display fetched the list: look again
+  if (ha && !pipelineId()) {
+    ha.call({ type: 'assist_pipeline/pipeline/list' })
+      .then((r) => {
+        pipelines = r.pipelines
+        updateWakeWord()
+      })
+      .catch(() => {})
+  }
 }
 
 function updateWakeWord() {

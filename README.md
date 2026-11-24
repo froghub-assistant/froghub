@@ -1,7 +1,8 @@
 # Frog Hub
 
 A homemade smart display (like an Echo Show / Nest Hub) for children's tablets (even old ones on Fire OS 5), with switchable personalities:
-**Verity** (default), **Falsity**, **Lovity** and **Frog**.
+**Verity** (default), **Falsity**, **Lovity** and **Frog**, or make your own: describe a character and Claude draws its
+animated face, picks its colours and voice, and writes how it talks.
 
 **Documentation: [froghub-assistant.github.io](https://froghub-assistant.github.io)**
 

@@ -1,13 +1,22 @@
 <script>
-  // An animated face for the current personality: a Verity-style smiley or a frog.
+  // An animated face for the current personality: a Verity-style smiley, a frog, or a custom personality's own SVG
+  // (made on the admin page, channel/personas.ts). A custom face is shown as an <img>, so it can't run anything; the
+  // mood and feeling go on its root <svg> as classes (mood-speaking, feeling-tired, ...) for its own CSS.
   // `mood` follows the voice status: waiting (idle, blinking), listening, thinking, speaking, error.
   // `feeling` is how it is while nobody's talking to it (a child's idea): happy, sad or tired.
   import { Spring } from 'svelte/motion'
 
-  let { kind = 'smiley', fill, ink, mood = 'waiting', feeling = 'happy', size = 220 } = $props()
+  let { kind = 'smiley', fill, ink, mood = 'waiting', feeling = 'happy', size = 220, svg = '' } = $props()
   const idle = $derived(!['listening', 'thinking', 'speaking'].includes(mood))
   const shows = $derived(idle ? feeling : 'happy') // talking to it always cheers it up
   const uid = Math.random().toString(36).slice(2, 8) // unique gradient ids per face
+  const MOODS = ['waiting', 'listening', 'thinking', 'speaking', 'error']
+  const customUrl = $derived(
+    kind === 'custom' && svg
+      ? 'data:image/svg+xml;charset=utf-8,' +
+          encodeURIComponent(svg.replace(/<svg/i, `<svg class="mood-${MOODS.includes(mood) ? mood : 'waiting'} feeling-${shows}"`))
+      : '',
+  )
 
   // You can drag the smiley round to look at the back of its head. It turns back to face you when it
   // starts listening or talking. A drag isn't a tap, so it doesn't start a conversation.
@@ -44,6 +53,11 @@
   const features = $derived(`translate(${100 + Math.sin(rad) * 62} 0) scale(${Math.max(Math.abs(facing), 0.01)} 1) translate(-100 0)`)
 </script>
 
+{#if kind === 'custom'}
+  <div class="face custom {mood}" style="width: {size}px; height: {size}px" aria-hidden="true">
+    {#if customUrl}<img src={customUrl} alt="" width={size} height={size} />{/if}
+  </div>
+{:else}
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <svg
   class="face {mood} {idle ? feeling : ''}"
@@ -124,12 +138,18 @@
     </g>
   {/if}
 </svg>
+{/if}
 
 <style>
   .face {
     display: block;
     transition: transform 0.3s;
     touch-action: pan-y; /* sideways drags spin the face instead of scrolling */
+  }
+  .custom img {
+    display: block;
+    width: 100%;
+    height: 100%;
   }
   .eyes {
     transform-origin: 100px 70px;

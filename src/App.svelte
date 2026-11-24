@@ -8,7 +8,7 @@
   import MusicSearch from './lib/MusicSearch.svelte'
   import NowPlaying from './lib/NowPlaying.svelte'
   import { HomeAssistant } from './lib/ha.js'
-  import { personality } from './lib/personalities.js'
+  import { currentPersonality, refreshCustoms } from './lib/customs.svelte.js'
   import { settings, saveSettings, pullShared } from './lib/settings.svelte.js'
   import { house } from './lib/house.svelte.js'
   import { alarm, startAlarms, finish as finishAlarm } from './lib/alarms.svelte.js'
@@ -54,7 +54,7 @@
   let messageTargets = $state([])
   let messageNote = $state('')
 
-  let p = $derived(personality(settings.personality))
+  let p = $derived(currentPersonality(settings.personality))
   // This display, as the other displays see it (for messages): its own name, or its room's.
   let areaName = $derived((areas.find((a) => a.area_id === settings.area) || {}).name || '')
   let me = $derived({
@@ -667,6 +667,7 @@
     const sync = async () => {
       if (showSettings || showOnboarding) return
       const changed = await pullShared()
+      refreshCustoms() // personalities made on the admin page
       if (changed.includes('haUrl')) {
         stopVoice()
         connect()
@@ -693,7 +694,7 @@
       onclick={() => (connection === 'none' || voice.muted ? (typing = true) : tapToTalk())}
       aria-label={connection === 'none' || voice.muted ? `Type to ${p.name}` : voice.status === 'listening' ? 'Stop listening' : 'Talk'}
     >
-      <Face kind={p.face} fill={p.colours.faceFill} ink={p.colours.faceInk} mood={voice.status} {feeling} size={busy ? 260 : 220} />
+      <Face kind={p.face} svg={p.svg} fill={p.colours.faceFill} ink={p.colours.faceInk} mood={voice.status} {feeling} size={busy ? 260 : 220} />
     </button>
     {#if busy || voice.reply}
       {#if voice.heard}<p class="heard">“{voice.heard}”</p>{/if}

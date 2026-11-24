@@ -10,7 +10,8 @@
   import PinPad from './PinPad.svelte'
   import { HomeAssistant } from './ha.js'
   import { startMic } from './mic.js'
-  import { personalities, personality } from './personalities.js'
+  import { personalities } from './personalities.js'
+  import { currentPersonality, personalityList } from './customs.svelte.js'
   import { settings, saveSettings, SYNCED } from './settings.svelte.js'
   import { house, houseLoaded } from './house.svelte.js'
   import { startHaLogin, pendingHaLogin, finishHaLogin, newPairing, waitForPairing } from './connect.js'
@@ -30,7 +31,7 @@
   // svelte-ignore state_referenced_locally (from where it starts)
   let picked = $state(STEPS.indexOf(step) > STEPS.indexOf('personality')) // a personality has been chosen (past its page)
   // Frog Hub is a frog until a personality is picked
-  let p = $derived(personality(step === 'personality' || picked ? draft.personality : 'frog'))
+  let p = $derived(currentPersonality(step === 'personality' || picked ? draft.personality : 'frog'))
   let adminToken = $state(null)
   let grownUps = $state(false) // a grown-ups display: no kids' rules (saved on the server at the end, with the PIN)
 
@@ -317,14 +318,14 @@
       {:else if step === 'personality'}
         <h1>Who should I be?</h1>
         <div class="faces">
-          {#each Object.entries(personalities) as [id, each] (id)}
+          {#each personalityList() as [id, each] (id)}
             <button
               class="pick"
               class:picked={draft.personality === id}
               style="--c: {each.colours.accent}; --cbg: {each.colours.bg2}"
               onclick={() => (draft.personality = id)}
             >
-              <Face kind={each.face} fill={each.colours.faceFill} ink={each.colours.faceInk} size={96} mood={draft.personality === id ? 'speaking' : 'waiting'} />
+              <Face kind={each.face} svg={each.svg} fill={each.colours.faceFill} ink={each.colours.faceInk} size={96} mood={draft.personality === id ? 'speaking' : 'waiting'} />
               <b>{each.name}</b>
             </button>
           {/each}
@@ -368,7 +369,7 @@
       {:else if step === 'mic'}
         <h1>{heard ? 'I can hear you!' : 'Can I hear you?'}</h1>
         <div class="hero">
-          <Face kind={p.face} fill={p.colours.faceFill} ink={p.colours.faceInk} size={150} mood={heard ? 'speaking' : mic ? 'listening' : 'waiting'} />
+          <Face kind={p.face} svg={p.svg} fill={p.colours.faceFill} ink={p.colours.faceInk} size={150} mood={heard ? 'speaking' : mic ? 'listening' : 'waiting'} />
         </div>
         <div class="meter"><span style="width: {level * 100}%"></span></div>
         {#if heard}
@@ -389,7 +390,7 @@
           {/each}
         </div>
         <div class="hero bob">
-          <Face kind={p.face} fill={p.colours.faceFill} ink={p.colours.faceInk} size={190} mood="speaking" />
+          <Face kind={p.face} svg={p.svg} fill={p.colours.faceFill} ink={p.colours.faceInk} size={190} mood="speaking" />
         </div>
         <h1 class="big">All set, {draft.name}! <Icon of={I.PartyPopper} size={44} /></h1>
         {#if noHa}

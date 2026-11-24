@@ -1,5 +1,6 @@
 // Each personality changes the look, the on-screen words, the voice, and how the assistant talks
-// (the assistant is told the personality with every request).
+// (the assistant is told the personality with every request). These four are built in; grown-ups can make more on
+// the admin page (channel/personas.ts), which customs.svelte.js adds here with setCustom.
 
 export const personalities = {
   frog: {
@@ -46,6 +47,31 @@ export const personalities = {
     thinking: 'Thinking lovely thoughts…',
     error: 'Aww, something went wrong 💔',
   },
+}
+
+const BUILT_IN = new Set(Object.keys(personalities))
+
+/** Replaces the custom personalities with `list` (GET /api/personalities), turned into the same shape as the
+ * built-in ones. Built-in ids are never replaced. */
+export function setCustom(list) {
+  for (const id of Object.keys(personalities)) if (!BUILT_IN.has(id)) delete personalities[id]
+  for (const c of Array.isArray(list) ? list : []) {
+    if (!c || typeof c.id !== 'string' || BUILT_IN.has(c.id) || !c.colours || typeof c.svg !== 'string') continue
+    const greeting = String(c.greeting || 'Hi {name}!')
+    personalities[c.id] = {
+      name: c.name,
+      pipeline: c.pipeline || `Frog Hub · ${c.name}`,
+      pitch: c.pitch || 1,
+      face: 'custom',
+      svg: c.svg,
+      custom: true,
+      colours: c.colours,
+      greeting: (name) => greeting.split('{name}').join(name),
+      listening: c.listening,
+      thinking: c.thinking,
+      error: c.error,
+    }
+  }
 }
 
 export function personality(id) {

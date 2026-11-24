@@ -11,6 +11,7 @@
 - **Assistant:** what the assistant may use (below), and which [lists](/features/lists) it may use.
 - **Memory:** the assistant's memory files, and asking it to remember or forget something.
 - **History:** what it was asked and what it answered.
+- **Personalities:** [make your own](/features/voice#making-your-own): Claude draws the face and writes the rest.
 - **Voices:** the wake word recordings.
 
 There's a phone app for it too: see [the Android apps](/developers/android).

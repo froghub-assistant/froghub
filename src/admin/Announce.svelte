@@ -2,7 +2,7 @@
   // Say something on one Frog Hub or all of them, word for word or by asking the assistant to put it in its own words.
   import { onMount } from 'svelte'
   import { api } from './api.svelte.js'
-  import { personalities } from '../lib/personalities.js'
+  import { personalityList, refreshCustoms } from '../lib/customs.svelte.js'
   import { house } from '../lib/house.svelte.js'
   import { Megaphone } from '@lucide/svelte'
 
@@ -17,6 +17,7 @@
   let error = $state('')
 
   onMount(async () => {
+    refreshCustoms()
     try {
       displays = await (await fetch('/api/displays')).json()
     } catch {
@@ -65,7 +66,7 @@
         As
         <select bind:value={personality}>
           <option value="">The usual personality</option>
-          {#each Object.entries(personalities) as [id, p] (id)}<option value={id}>{p.name}</option>{/each}
+          {#each personalityList() as [id, p] (id)}<option value={id}>{p.name}</option>{/each}
         </select>
       </label>
     {/if}

@@ -39,8 +39,9 @@ Tools live in `channel/`, one file each, and are the same for both brains:
 
 ## Adding a personality
 
-Add it to `src/lib/personalities.js` and to `PERSONALITIES` in `channel/common.ts`, describe it in the assistant's
-rules (`CLAUDE.md` or `assistant.md`), and create a Home Assistant pipeline `Frog Hub · <Name>` with its Piper voice.
+Most people should just [make one on the admin page](/features/voice#making-your-own). To build one in: add it to
+`src/lib/personalities.js` and to `PERSONALITIES` in `channel/common.ts`, describe it in the assistant's rules
+(`CLAUDE.md` or `assistant.md`), and create a Home Assistant pipeline `Frog Hub · <Name>` with its Piper voice.
 
 ## Commits
 
