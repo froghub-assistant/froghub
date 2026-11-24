@@ -61,7 +61,8 @@ VOICE_BIND=0.0.0.0 docker compose -f setup/voice/compose.yaml up -d whisper
 ## Changing things later
 
 Run `bun run setup` again: each answer defaults to what's set now, and `bun run setup --dry-run` shows what it would
-do without changing anything. The assistant's rules (`CLAUDE.md` or `assistant.md`) are only replaced if you say so,
-since they're yours to tweak.
+do without changing anything. The assistant's rules (`CLAUDE.md` or `assistant.md`) are yours to tweak: if you haven't
+changed them since setup wrote them, they're brought up to date with the new template; if you have, they're only
+replaced if you say so. (Setup keeps a copy of what it last wrote beside them, `<file>.setup`, to tell.)
 
 Then open the site on each tablet and follow the welcome: see [Setting up a display](/guide/displays).

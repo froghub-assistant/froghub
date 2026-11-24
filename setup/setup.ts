@@ -108,6 +108,19 @@ function write(path: string, text: string, mode?: number): void {
   say(`Wrote ${path}`)
 }
 
+/** A rules file (CLAUDE.md, assistant.md) is the house's to tweak. A new one is written; one nobody has changed since
+ * setup wrote it is brought up to date with the template; one that was changed is only replaced when asked. Setup
+ * keeps a copy of what it last wrote beside it (<file>.setup) to tell which. */
+function rules(path: string, text: string): void {
+  const copy = `${path}.setup`
+  const current = existsSync(path) ? readFileSync(path, 'utf8') : null
+  const untouched = current !== null && existsSync(copy) && readFileSync(copy, 'utf8') === current
+  if (current !== null && current !== text && !untouched &&
+    !yes(`Replace ${path} (its rules) with the fresh template? It's been changed since setup wrote it`, false)) return
+  if (current !== text) write(path, text)
+  if (!DRY) writeFileSync(copy, text)
+}
+
 const readJson = (path: string) => (existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : {})
 
 function render(template: string, values: Record<string, string>): string {
@@ -214,9 +227,7 @@ if (brain === 'claude-code') {
   agentDir = resolve(ask("The assistant's folder (its rules and settings)", agentDir))
   const memory = join(homedir(), '.claude', 'projects', agentDir.replace(/[^a-zA-Z0-9]/g, '-'), 'memory')
   const values = { ...childValues, MEMORY: '/' + memory, BUN, CHANNEL_DIR, AGENT_DIR: agentDir, TMUX: spawnSync('sh', ['-c', 'command -v tmux']).stdout?.toString().trim() || '/usr/bin/tmux' }
-  // Its rules are the house's to tweak, so an existing CLAUDE.md is only replaced when asked
-  if (!existsSync(join(agentDir, 'CLAUDE.md')) || yes(`Replace ${agentDir}/CLAUDE.md (its rules) with the fresh template`, false))
-    write(join(agentDir, 'CLAUDE.md'), render('agent/CLAUDE.md', values))
+  rules(join(agentDir, 'CLAUDE.md'), render('agent/CLAUDE.md', values))
   write(join(agentDir, 'settings.json'), render('agent/settings.json', values))
   write(join(agentDir, 'mcp.json'), render('agent/mcp.json', values))
   write(join(agentDir, 'start'), render('agent/start', values), 0o755)
@@ -249,9 +260,7 @@ if (brain === 'claude-code') {
   if (!env.ANTHROPIC_API_KEY && !env.FROGHUB_FALLBACK_URL) say('⚠️  No API key and no local model: it will only be able to say it can\'t answer.')
   write(envFile, '# Frog Hub standalone assistant (written by bun run setup; keep this private)\n' +
     Object.entries(env).map(([k, v]) => `${k}=${v}`).join('\n') + '\n', 0o600)
-  const rules = join(CONFIG, 'assistant.md')
-  if (!existsSync(rules) || yes(`Replace ${rules} (its rules) with the fresh template`, false))
-    write(rules, render('standalone/assistant.md', childValues))
+  rules(join(CONFIG, 'assistant.md'), render('standalone/assistant.md', childValues))
   write(standaloneUnit, render('standalone/froghub-standalone.service', { BUN, CHANNEL_DIR, ENV_FILE: envFile }))
 }
 
