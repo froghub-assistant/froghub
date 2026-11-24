@@ -97,17 +97,23 @@ const KINDS: Record<string, string> = {
   'admin-page': "This comes from the admin page on a grown-up's phone or computer, not from a display.",
 }
 
-function systemPrompt(meta: Record<string, string>): string {
+/** The instructions in two parts: the house's rules, the same every time (so the Anthropic API can cache them), and
+ * what's true of this request. */
+function systemPrompt(meta: Record<string, string>): [string, string] {
   const rules = existsSync(PROMPT_FILE) ? readFileSync(PROMPT_FILE, 'utf8') : 'You are Frog Hub, a friendly smart display.'
-  return [
-    rules,
+  return [rules, [
     `Right now you are the "${meta.personality}" personality, talking to ${meta.speaker}. It is ${meta.time}.`,
     meta.mode === 'admin' ? 'This request is in admin mode (a grown-up unlocked it with the PIN).' : 'This request is not in admin mode.',
     ...(meta.audience === 'grown-ups' ? ["This display is a grown-ups' one: the children's rules don't apply here."] : []),
     ...(KINDS[meta.kind] ? [KINDS[meta.kind]] : []),
     memoryForPrompt(),
     'Always answer by calling the reply tool (after any other tools you need).',
-  ].join('\n\n')
+  ].join('\n\n')]
+}
+
+/** The tools with a cache breakpoint on the last one, so the whole list is cached with the rules. */
+function cacheLast<T extends object>(list: T[]): T[] {
+  return list.map((t, i) => (i === list.length - 1 ? { ...t, cache_control: { type: 'ephemeral' } } : t))
 }
 
 /** Runs a tool either model called: its memory, web search (the local model's), or the shared ones. */
@@ -126,7 +132,7 @@ async function useTool(name: string, args: Record<string, unknown>, ctx: ToolCon
 type Block = { type: string; id?: string; name?: string; input?: Record<string, unknown> }
 
 /** Asks Claude, running the tools it calls, until it replies (or hands the question to BIG_MODEL). */
-async function askClaude(system: string, messages: Turn[], from: Screen | undefined, model = MODEL): Promise<Reply> {
+async function askClaude(system: [string, string], messages: Turn[], from: Screen | undefined, model = MODEL): Promise<Reply> {
   const convo: unknown[] = messages.map(m => ({ role: m.role, content: m.content }))
   const canThink = Boolean(BIG_MODEL) && model !== BIG_MODEL
   const allowed = policy()
@@ -138,11 +144,12 @@ async function askClaude(system: string, messages: Turn[], from: Screen | undefi
       headers: { 'content-type': 'application/json', 'x-api-key': API_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model,
-        max_tokens: 800,
-        system,
+        max_tokens: 2000, // room for a story or a long card, like the Claude Code brain
+        // The rules and tools are the same for every request: cached, they cost less and come back faster
+        system: [{ type: 'text', text: system[0], cache_control: { type: 'ephemeral' } }, { type: 'text', text: system[1] }],
         messages: convo,
         tools: [
-          ...offered.map(t => ({ name: t.name, description: t.description, input_schema: t.inputSchema })), ...(canThink ? [THINK_TOOL] : []),
+          ...cacheLast([...offered.map(t => ({ name: t.name, description: t.description, input_schema: t.inputSchema })), ...(canThink ? [THINK_TOOL] : [])]),
           ...(allowed.webSearch ? [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }] : []),
         ],
         tool_choice: { type: 'any' },
@@ -177,12 +184,12 @@ async function askClaude(system: string, messages: Turn[], from: Screen | undefi
 
 /** Asks the OpenAI-compatible model, running the tools it calls, until it replies (or hands the question to
  * FALLBACK_BIG_MODEL). */
-async function askFallback(system: string, messages: Turn[], from: Screen | undefined, model = FALLBACK_MODEL): Promise<Reply> {
+async function askFallback(system: [string, string], messages: Turn[], from: Screen | undefined, model = FALLBACK_MODEL): Promise<Reply> {
   const canThink = Boolean(FALLBACK_BIG_MODEL) && model !== FALLBACK_BIG_MODEL
   const allowed = policy()
   const offered: Tool[] = [REPLY_TOOL, ...(allowed.memory ? memoryTools : []), ...(allowed.webSearch ? [webSearchTool] : []),
     ...(FALLBACK_ALL ? tools({ requestIds: false, think: false }) : [])]
-  const convo: unknown[] = [{ role: 'system', content: system }, ...messages]
+  const convo: unknown[] = [{ role: 'system', content: system.join('\n\n') }, ...messages]
   let card: Display | undefined
   for (let round = 0; round < 5; round++) {
     const r = await fetch(`${FALLBACK_URL}/chat/completions`, {
@@ -191,7 +198,7 @@ async function askFallback(system: string, messages: Turn[], from: Screen | unde
       body: JSON.stringify({
         model,
         // OpenAI's own API wants the newer name (its reasoning models refuse max_tokens); local servers the older one
-        ...(new URL(FALLBACK_URL).hostname === 'api.openai.com' ? { max_completion_tokens: 600 } : { max_tokens: 600 }),
+        ...(new URL(FALLBACK_URL).hostname === 'api.openai.com' ? { max_completion_tokens: 1500 } : { max_tokens: 1500 }),
         messages: convo,
         tools: [
           ...offered.map(t => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.inputSchema } })),

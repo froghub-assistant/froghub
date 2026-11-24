@@ -19,7 +19,7 @@ Object.assign(process.env, {
 const MEMORY = join(CONFIG, 'memory.md')
 writeFileSync(join(CONFIG, 'assistant.md'), 'You are Frog Hub (test rules).')
 
-type Body = { model: string; system?: string; messages: { role: string; content: unknown }[]; tools: { name: string }[] }
+type Body = { model: string; system?: string; systemBlocks?: { text: string; cache_control?: unknown }[]; max_tokens?: number; messages: { role: string; content: unknown }[]; tools: { name: string }[] }
 let claude: (body: Body) => Response = () => new Response('down', { status: 500 })
 let fallback: (body: Body) => Response = () => new Response('down', { status: 500 })
 const asked: { to: 'claude' | 'fallback'; body: Body; headers: Record<string, string> }[] = []
@@ -35,6 +35,8 @@ spyOn(globalThis, 'fetch').mockImplementation((async (input: RequestInfo | URL, 
   if (url === 'https://api.anthropic.com/v1/messages' || url === 'http://fallback.test/v1/chat/completions') {
     const to = url.includes('anthropic') ? 'claude' : 'fallback'
     const body = JSON.parse(String(init?.body))
+    // Claude gets its instructions as blocks (the rules cached); the tests read them as one text
+    if (Array.isArray(body.system)) (body.systemBlocks = body.system), (body.system = body.system.map((b: { text: string }) => b.text).join('\n\n'))
     asked.push({ to, body, headers: init?.headers as Record<string, string> })
     return (to === 'claude' ? claude : fallback)(body)
   }
@@ -74,6 +76,19 @@ describe('answering', () => {
     expect(body.system).toContain('the "frog" personality, talking to Sam')
     expect(body.system).toContain('not in admin mode')
     expect(body.messages).toEqual([{ role: 'user', content: 'Is it sunny?' }])
+  })
+
+  test('the rules and tools are cached; what changes per request comes after them; room for a long answer', async () => {
+    claude = () => says('Ribbit.')
+    await ask({ text: 'Hi', speaker: 'Sam', conversation_id: 'c1b' })
+    const { body } = asked[0]
+    expect(body.systemBlocks![0]).toEqual({ type: 'text', text: 'You are Frog Hub (test rules).', cache_control: { type: 'ephemeral' } })
+    expect(body.systemBlocks![1].text).toContain('talking to Sam')
+    expect(body.systemBlocks![1].cache_control).toBeUndefined()
+    const custom = body.tools.filter(t => !('type' in t))
+    expect((custom.at(-1) as { cache_control?: unknown }).cache_control).toEqual({ type: 'ephemeral' })
+    expect(custom.slice(0, -1).some(t => 'cache_control' in t)).toBe(false)
+    expect(body.max_tokens).toBe(2000)
   })
 
   test("the room's devices go with the question, and admin mode is passed on", async () => {
@@ -138,7 +153,7 @@ describe('when Claude fails', () => {
     const { body } = asked[1]
     expect(body.model).toBe('local-model')
     expect(asked[1].headers.authorization).toBe('Bearer local-key')
-    expect(body).toMatchObject({ max_tokens: 600 })
+    expect(body).toMatchObject({ max_tokens: 1500 })
     expect(body.messages[0]).toMatchObject({ role: 'system' })
   })
 
