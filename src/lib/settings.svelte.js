@@ -2,6 +2,8 @@
 // display matches: a grown-up's Save in admin mode publishes them, and displays with sync on pick them up.
 // The HA token is shared too, but the server only hands it over in admin mode (after the PIN).
 
+import { SAVER_DEFAULTS } from './screensaver.js'
+
 const KEY = 'froghub-settings'
 
 const defaults = {
@@ -35,9 +37,10 @@ const defaults = {
   morningSpeak: true, // say good morning: the time, the weather and today's events
   morningCalendars: [], // HA calendar entities whose events it reads out
   maSpeaker: true, // be a Music Assistant speaker, when the server has one (music.svelte.js)
+  ...SAVER_DEFAULTS, // the screensaver (screensaver.js): saverOn, saverMode, saverMinutes, saverHours, saverFrom, saverTo, saverDim
 }
 
-export const SYNCED = ['personality', 'iconStyle', 'nightStart', 'nightEnd', 'haUrl'] // not area or name: each display has its own room and person
+export const SYNCED = ['personality', 'iconStyle', 'nightStart', 'nightEnd', 'haUrl', ...Object.keys(SAVER_DEFAULTS)] // not area or name: each display has its own room and person
 
 function load() {
   try {

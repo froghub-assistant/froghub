@@ -7,6 +7,7 @@
   import { house } from './house.svelte.js'
   import Icon from './Icon.svelte'
   import { icons as I } from './icons.js'
+  import { cleanSaver, fromApp, toApp } from './screensaver.js'
 
   let { areas = [], calendars = [], adminToken = null, onClose, onUnlock, onWelcome } = $props()
 
@@ -16,6 +17,7 @@
     { id: 'display', label: 'This display', icon: I.TabletSmartphone },
     { id: 'night', label: 'Night & goodnight', icon: I.Moon },
     { id: 'morning', label: 'Good morning', icon: I.Sunrise },
+    { id: 'saver', label: 'Screensaver', icon: I.Monitor },
     { id: 'connection', label: 'Connection', icon: I.House },
     { id: 'grownups', label: 'Grown-ups', icon: I.Shield, admin: true },
     { id: 'app', label: 'Tablet app', icon: I.Smartphone, app: true },
@@ -59,9 +61,28 @@
   // The Android app's own settings, when Frog Hub is running inside it (see android/ in the repo).
   const app = window.FrogHubApp && window.FrogHubApp.getSettings ? window.FrogHubApp : null
   let appDraft = $state(app ? JSON.parse(app.getSettings()) : null)
+  // The screensaver's settings: inside an app new enough to have its own (its five-tap dialog), those; else this display's
+  const appSaverJson = app && app.getScreensaverSettings && app.setScreensaverSettings ? app.getScreensaverSettings() : ''
+  const appSaver = fromApp(appSaverJson)
+  let saverDraft = $state(appSaver ? { ...appSaver } : null)
+  let saverEdit = $derived(saverDraft || draft) // what the Screensaver section's inputs change
+  let screenOff = $derived(saverDraft && appDraft ? Number(appDraft.dimMinutes) || 0 : 0) // the app's screen-off delay
+  let faceName = $derived((personalityList().find(([id]) => id === draft.personality) || [0, { name: 'The personality' }])[1].name)
+  // Admin mode: the slideshow's photos (channel/photos.ts): how many are in the server's folder, and the address list
+  let photoInfo = $state(null)
+  let photoText = $state('')
+  let photoLoaded = ''
+  // svelte-ignore state_referenced_locally
+  if (adminToken) {
+    fetch('/api/photos').then((r) => r.json()).then((r) => {
+      photoInfo = { total: r.photos.length, folder: r.photos.length - r.urls.length }
+      photoText = photoLoaded = r.urls.join('\n')
+    }).catch(() => {})
+  }
   let sections = $derived(SECTIONS.filter((s) => (!s.admin || (adminToken && policy)) && (!s.app || appDraft)))
 
   async function save() {
+    Object.assign(draft, cleanSaver(draft)) // whatever was typed into the screensaver's numbers and times
     Object.assign(settings, draft)
     saveSettings()
     if (adminToken) {
@@ -73,6 +94,13 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
             body: JSON.stringify({ device: settings.deviceId, grownUps }),
+          })
+        }
+        if (photoInfo && photoText.trim() !== photoLoaded.trim()) {
+          await fetch('/api/admin/photos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+            body: JSON.stringify({ urls: photoText.split(/\s+/).filter(Boolean) }),
           })
         }
         if (policy && JSON.stringify(policy) !== policyLoaded) {
@@ -90,6 +118,7 @@
         // the server is unreachable: this display's own settings are still saved
       }
     }
+    if (saverDraft) app.setScreensaverSettings(JSON.stringify(toApp(saverDraft)))
     if (app) app.setSettings(JSON.stringify(appDraft)) // reloads the page itself if the address changed
     onClose(true)
   }
@@ -234,6 +263,45 @@
                 </label>
               {/each}
             {/if}
+          </section>
+        {/if}
+      {:else if section === 'saver'}
+        <section class="card">
+          <h2>Screensaver</h2>
+          <label class="row switch">Screensaver when nobody's using it <input type="checkbox" bind:checked={saverEdit.saverOn} /></label>
+          {#if saverEdit.saverOn}
+            <label class="row">
+              Show
+              <select bind:value={saverEdit.saverMode}>
+                <option value="clock">A big clock</option>
+                <option value="face">{faceName} floating about</option>
+                <option value="photos">Photos</option>
+                <option value="mix">A mix of all three</option>
+              </select>
+            </label>
+            <label class="row">After <span><input type="number" min="1" max="240" bind:value={saverEdit.saverMinutes} /> idle minutes</span></label>
+            {#if screenOff > 0 && Number(saverEdit.saverMinutes) >= screenOff}
+              <p class="note">The tablet app turns the screen off after {screenOff} {screenOff === 1 ? 'minute' : 'minutes'}, so the screensaver starts {screenOff > 1 ? 'a minute' : 'half a minute'} before that.</p>
+            {/if}
+            <label class="row switch">Dim the screen while it's on <input type="checkbox" bind:checked={saverEdit.saverDim} /></label>
+            <label class="row switch">Only at certain times <input type="checkbox" bind:checked={saverEdit.saverHours} /></label>
+            {#if saverEdit.saverHours}
+              <label class="row">From <span><input type="time" bind:value={saverEdit.saverFrom} /> to <input type="time" bind:value={saverEdit.saverTo} /></span></label>
+            {/if}
+          {/if}
+          <p class="note">
+            Moves about slowly, so nothing stays in one place on the screen. A tap anywhere wakes it (and only wakes it).
+            {saverDraft ? 'These are the tablet app\'s own settings, also in its corner menu (tap the top-left corner 5 times).' : ''}
+          </p>
+        </section>
+        {#if adminToken && photoInfo}
+          <section class="card">
+            <h2>Photos for the slideshow</h2>
+            <p class="note">
+              {photoInfo.folder} {photoInfo.folder === 1 ? 'picture' : 'pictures'} in the server's photo folder (~/.config/froghub/photos).
+              Add the addresses of more below, one per line. With none, the slideshow shows the clock.
+            </p>
+            <textarea bind:value={photoText} rows="4" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="https://example.com/photo.jpg"></textarea>
           </section>
         {/if}
       {:else if section === 'connection'}
@@ -410,6 +478,19 @@
     background: rgba(255, 255, 255, 0.06);
     color: var(--fg);
     font: inherit;
+    box-sizing: border-box;
+  }
+  textarea {
+    display: block;
+    width: 100%;
+    margin: 6px 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--muted);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--fg);
+    font: inherit;
+    font-size: 0.85em;
     box-sizing: border-box;
   }
   input[type='number'] {

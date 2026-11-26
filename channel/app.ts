@@ -20,6 +20,7 @@ import { goodnightOptions } from './goodnight.ts'
 import { handleRadio } from './radio.ts'
 import { handleLists } from './lists.ts'
 import { handlePersonas, knownPersonality, personaNote } from './personas.ts'
+import { handlePhotos } from './photos.ts'
 
 /** Hands `content` to the assistant (meta: personality, speaker, time, and kind, mode, audience, conversation_id
  * when they apply) and waits for its reply; null if it didn't answer in time. */
@@ -183,6 +184,7 @@ export function routes(unlogged: Ask, ping: () => Record<string, unknown> = () =
     if (pathname === '/api/admin/memory') return handleMemory(req)
     if (pathname === '/api/admin/history') return handleHistory(req)
     if (pathname === '/api/admin/lists') return handleLists(req)
+    if (pathname === '/api/photos' || pathname.startsWith('/api/photos/') || pathname === '/api/admin/photos') return handlePhotos(req, pathname)
     if (req.method === 'POST' && pathname === '/local/announce') return handleAnnounce(req, ask)
     if (req.method === 'POST' && pathname === '/api/admin/remember') {
       return adminValid(req.headers.get('x-admin-token')) ? handleRemember(req, ask) : json({ error: 'admin mode needed' }, 403)

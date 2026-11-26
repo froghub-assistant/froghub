@@ -10,12 +10,13 @@
  *   agentDir   the Claude Code assistant's folder (the "claude-code" brain); its memory lives under ~/.claude/projects
  *   musicAssistant  Music Assistant's Sendspin server (host:port, usually port 8927), which Caddy passes /sendspin on
  *              to so the displays can be its speakers ("" = none)
+ *   photosDir  the screensaver's photo folder ("" = ~/.config/froghub/photos, see photos.ts)
  */
 import { existsSync, readFileSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
 
-export type Instance = { site: string; haUrl: string; timeZone: string; kids: string[]; agentDir: string; musicAssistant: string }
+export type Instance = { site: string; haUrl: string; timeZone: string; kids: string[]; agentDir: string; musicAssistant: string; photosDir: string }
 
 export const INSTANCE_FILE = join(homedir(), '.config', 'froghub', 'instance.json')
 
@@ -26,6 +27,7 @@ const DEFAULTS: Instance = {
   kids: [],
   agentDir: join(homedir(), 'froghub-agent'),
   musicAssistant: '',
+  photosDir: '',
 }
 
 export const instance: Instance = {

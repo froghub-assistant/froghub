@@ -9,8 +9,9 @@
 - retries every 10 seconds when the server can't be reached;
 - never closes on Back.
 
-**Five quick taps in the top-left corner** open its settings (address, open on startup, exit). It asks for Frog Hub's
-address on first start, or set it over adb:
+**Five quick taps in the top-left corner** open its settings (address, screen-off delay,
+[screensaver](/features/screensaver#in-the-android-app), open on startup, exit). It asks for Frog Hub's address on
+first start, or set it over adb:
 
 ```sh
 adb shell am start -n party.froghub/.MainActivity -e url https://froghub.example

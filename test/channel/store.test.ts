@@ -78,6 +78,12 @@ describe('shared settings', () => {
     expect(sharedSettings()).toEqual(saved.settings)
   })
 
+  test("the screensaver's settings are published with the others", async () => {
+    const saver = { saverOn: true, saverMode: 'mix', saverMinutes: 3, saverHours: true, saverFrom: '08:00', saverTo: '19:30', saverDim: false }
+    const saved = await read(handleStore(request('POST', '/api/settings', { settings: { ...saver, saverSecret: 1 } }, await asAdmin()), '/api/settings'))
+    expect(saved.settings).toEqual(saver)
+  })
+
   test('publishing them needs admin mode', async () => {
     expect((await handleStore(request('POST', '/api/settings', { settings: { personality: 'verity' } }), '/api/settings')).status).toBe(403)
     expect(sharedSettings()).toEqual({})

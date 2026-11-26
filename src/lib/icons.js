@@ -26,6 +26,7 @@ import MagnifyingGlass from 'phosphor-svelte/lib/MagnifyingGlassIcon'
 import Megaphone from 'phosphor-svelte/lib/MegaphoneIcon'
 import Microphone from 'phosphor-svelte/lib/MicrophoneIcon'
 import MicrophoneSlash from 'phosphor-svelte/lib/MicrophoneSlashIcon'
+import Monitor from 'phosphor-svelte/lib/MonitorIcon'
 import Moon from 'phosphor-svelte/lib/MoonIcon'
 import MusicNotes from 'phosphor-svelte/lib/MusicNotesIcon'
 import Palette from 'phosphor-svelte/lib/PaletteIcon'
@@ -72,6 +73,7 @@ export const icons = {
   Mic: pair(L.Mic, Microphone),
   MicOff: pair(L.MicOff, MicrophoneSlash),
   Minimize2: pair(L.Minimize2, ArrowsIn),
+  Monitor: pair(L.Monitor, Monitor), // the screensaver
   Moon: pair(L.Moon, Moon),
   Music: pair(L.Music, MusicNotes),
   Palette: pair(L.Palette, Palette),

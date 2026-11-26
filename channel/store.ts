@@ -40,7 +40,9 @@ export const POLICY_DEFAULTS = {
 }
 export type Policy = typeof POLICY_DEFAULTS
 
-const SYNCED = ['personality', 'iconStyle', 'nightStart', 'nightEnd', 'haUrl'] as const // not area or name: each display has its own room and person
+const SYNCED = ['personality', 'iconStyle', 'nightStart', 'nightEnd', 'haUrl',
+  // the screensaver (src/lib/screensaver.js)
+  'saverOn', 'saverMode', 'saverMinutes', 'saverHours', 'saverFrom', 'saverTo', 'saverDim'] as const // not area or name: each display has its own room and person
 
 const read = (file: string) => (existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : null)
 

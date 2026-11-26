@@ -28,6 +28,7 @@
 | `freesound.key` | The Freesound API key |
 | `lists.json` | Which Home Assistant lists the assistant may use |
 | `personalities.json` | The personalities made on the admin page |
+| `photos/`, `photos.json` | The screensaver's photo folder, and the picture addresses a grown-up added |
 | `shared-settings.json`, `shared-token` | Settings every display shares, and the Home Assistant token (owner-only) |
 | `standalone.env` | The API brain's keys and settings (see [Environment variables](/reference/env)) |
 | `assistant.md` | The API brain's rules, yours to tweak |

@@ -7,6 +7,8 @@
   import Tiles from './lib/Tiles.svelte'
   import MusicSearch from './lib/MusicSearch.svelte'
   import NowPlaying from './lib/NowPlaying.svelte'
+  import Screensaver from './lib/Screensaver.svelte'
+  import { cleanSaver, fromApp, shouldShow } from './lib/screensaver.js'
   import { HomeAssistant } from './lib/ha.js'
   import { currentPersonality, refreshCustoms } from './lib/customs.svelte.js'
   import { settings, saveSettings, pullShared } from './lib/settings.svelte.js'
@@ -136,6 +138,56 @@
     : voice.status === 'error' ? p.error
     : '',
   )
+
+  // The screensaver (Screensaver.svelte, screensaver.js): after a few idle minutes, unless something's going on. Inside
+  // the Android app its settings are the app's own (the five-tap dialog), if the app is new enough to have them.
+  const appSaver = () => {
+    try {
+      const app = window.FrogHubApp
+      return app && typeof app.getScreensaverSettings === 'function' ? fromApp(app.getScreensaverSettings()) : null
+    } catch {
+      return null
+    }
+  }
+  let fromTheApp = $state(appSaver())
+  let saver = $derived(fromTheApp || cleanSaver(settings))
+  let lastActive = $state(Date.now())
+  const stillHere = () => (lastActive = Date.now())
+  let saverBlocked = $derived(
+    busy || !!alarm.ringing || needsTap || showSettings || showPin || showOnboarding || showMusic || showPlaying
+      || typing || messaging || cardFull || !!goodnight,
+  )
+  $effect(() => {
+    if (saverBlocked) lastActive = now.getTime() // counts from when whatever it was has finished
+  })
+  let saverShown = $derived(
+    !DEMO && shouldShow({
+      s: saver, idleMs: now - lastActive, blocked: saverBlocked,
+      minuteOfDay: saver.saverOn && saver.saverHours ? houseClock(now).minutes : 0, // only worked out when it matters
+      screenOffMinutes: (fromTheApp && fromTheApp.screenOffMinutes) || 0,
+    }),
+  )
+  // It stays a moment after waking, fading, so the rest of the waking tap lands on it rather than a button underneath
+  let saverLeaving = $state(false)
+  let saverWas = false
+  $effect(() => {
+    const shown = saverShown
+    if (saverWas && !shown) {
+      saverLeaving = true
+      const t = setTimeout(() => (saverLeaving = false), 600)
+      saverWas = shown
+      return () => clearTimeout(t)
+    }
+    saverWas = shown
+    if (shown) saverLeaving = false
+  })
+  // In the app, dim the backlight itself while it's on, and put it back when it goes
+  let appDims = $derived(!!window.FrogHubApp && typeof window.FrogHubApp.dimScreen === 'function')
+  $effect(() => {
+    if (!saverShown || !saver.saverDim || !appDims) return
+    window.FrogHubApp.dimScreen(true)
+    return () => window.FrogHubApp.dimScreen(false)
+  })
 
   $effect(() => {
     // The voice loop uses the personality's pipeline (voice) and pitch.
@@ -344,6 +396,7 @@
   let card = $state(null)
   let cardTimer = null
   function showCard(display) {
+    stillHere() // something new to look at: no screensaver over it
     cardFull = false
     card = display
     keepCard()
@@ -647,6 +700,7 @@
 
   function closeSettings(saved) {
     showSettings = false
+    fromTheApp = appSaver() // the screensaver's settings may have changed in the app
     if (saved) {
       stopVoice()
       connect()
@@ -660,6 +714,17 @@
 
   onMount(() => {
     const timer = setInterval(() => (now = new Date()), 1000)
+    // Any touch, click or key counts as someone being there (the capture phase sees them before anything else can stop them)
+    const activity = ['touchstart', 'mousedown', 'keydown', 'wheel']
+    for (const type of activity) window.addEventListener(type, stillHere, { capture: true, passive: true })
+    // The Android app lit its screen back up (a tap on its black cover): the screensaver goes too, with the same tap
+    window.frogHubWoke = stillHere
+    // The app's screensaver settings: the full app's bridge only has them once the app has answered, and they can
+    // change in the five-tap dialog
+    const saverTimer = setInterval(() => {
+      const next = appSaver()
+      if (JSON.stringify(next) !== JSON.stringify(fromTheApp)) fromTheApp = next
+    }, 5000)
     connect()
     startAlarms()
     const announceTimer = startAnnouncements(() => me, announced, adminCommand)
@@ -676,6 +741,8 @@
     sync()
     const syncTimer = setInterval(sync, 60000)
     return () => {
+      for (const type of activity) window.removeEventListener(type, stillHere, { capture: true })
+      clearInterval(saverTimer)
       clearInterval(timer)
       clearInterval(syncTimer)
       clearInterval(announceTimer)
@@ -849,6 +916,19 @@
         onWelcome={() => ((showSettings = false), (showOnboarding = true))}
       />
     {/key}
+  {/if}
+
+  {#if saverShown || saverLeaving}
+    <Screensaver
+      mode={saver.saverMode}
+      {p}
+      {feeling}
+      {now}
+      timeZone={TZ}
+      dim={saver.saverDim && !appDims}
+      leaving={!saverShown}
+      onWake={stillHere}
+    />
   {/if}
 
   {#if showOnboarding}
