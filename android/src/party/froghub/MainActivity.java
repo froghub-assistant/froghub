@@ -119,6 +119,23 @@ public class MainActivity extends DisplayActivity {
             applySettings(json);
         }
 
+        /** The screensaver's settings (the five-tap dialog's), for src/lib/screensaver.js. */
+        @JavascriptInterface
+        public String getScreensaverSettings() {
+            return screensaverJson();
+        }
+
+        @JavascriptInterface
+        public void setScreensaverSettings(String json) {
+            applyScreensaver(json);
+        }
+
+        /** The backlight down while the page's screensaver is on (true), and back again (false). */
+        @JavascriptInterface
+        public void dimScreen(boolean on) {
+            MainActivity.this.dimScreen(on);
+        }
+
         @JavascriptInterface
         public void exit() {
             runOnUiThread(MainActivity.this::finish);

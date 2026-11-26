@@ -14,18 +14,27 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.text.Editable;
 import android.text.InputType;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
+import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.Spinner;
+import android.widget.TextView;
+
+import java.util.Arrays;
+import java.util.regex.Pattern;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -35,7 +44,9 @@ import org.json.JSONObject;
  * (GeckoActivity in android-full/). The page gets the microphone (only Frog Hub's own site), can play sound without
  * a tap, and never lets the tablet lock. After a few idle minutes the screen goes dark (backlight down, black cover) but
  * the app keeps running, so a tap or the wake word lights it straight back up with no lock screen.
- * Five quick taps in the top-left corner open the settings (URL, screen-off delay, open on startup, exit).
+ * Five quick taps in the top-left corner open the settings (URL, screen-off delay, screensaver, open on startup, exit).
+ * The screensaver itself is the page's (src/lib/Screensaver.svelte): the app keeps its settings and hands them over
+ * (FrogHubApp.getScreensaverSettings), and turns the backlight down while it's on (FrogHubApp.dimScreen).
  */
 public abstract class DisplayActivity extends Activity {
     static final String PREFS = "froghub";
@@ -43,6 +54,12 @@ public abstract class DisplayActivity extends Activity {
     static final int MIC_REQUEST = 1;
     static final long RETRY_MS = 10_000;
     static final int DEFAULT_DIM_MINUTES = 5;
+    static final int DEFAULT_SAVER_MINUTES = 5;
+    static final float SAVER_BRIGHTNESS = 0.1f; // the backlight while the screensaver is on and dimmed
+    // The screensaver's modes, as the page knows them, and as the settings dialog shows them
+    static final String[] SAVER_MODES = {"clock", "face", "photos", "mix"};
+    static final String[] SAVER_MODE_NAMES = {"A big clock", "The face, floating about", "Photos", "A mix of all three"};
+    private static final Pattern TIME = Pattern.compile("([01]?\\d|2[0-3]):[0-5]\\d");
 
     protected final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable retry = this::load;
@@ -51,6 +68,7 @@ public abstract class DisplayActivity extends Activity {
     protected SharedPreferences prefs;
     private View cover; // black, over the page while the screen is "off"; also swallows the tap that wakes it
     private boolean asleep;
+    private boolean saverDimmed; // the page's screensaver asked for the backlight down
     private boolean swallowing; // the rest of the touch that woke the screen, so it doesn't press a button
     private WifiManager.WifiLock wifiLock; // so Wi-Fi never naps while the screen is dark
     protected boolean showingError;
@@ -149,6 +167,75 @@ public abstract class DisplayActivity extends Activity {
         }
     }
 
+    /** The screensaver's settings for the page (screensaver.js fromApp), with when the screen goes off (0 = never). */
+    protected String screensaverJson() {
+        try {
+            return new JSONObject()
+                    .put("enabled", prefs.getBoolean("saver_on", false))
+                    .put("mode", saverMode())
+                    .put("minutes", prefs.getInt("saver_minutes", DEFAULT_SAVER_MINUTES))
+                    .put("activeHours", prefs.getBoolean("saver_hours", false))
+                    .put("from", prefs.getString("saver_from", "07:00"))
+                    .put("to", prefs.getString("saver_to", "21:00"))
+                    .put("dim", prefs.getBoolean("saver_dim", true))
+                    .put("screenOffMinutes", dimMinutes())
+                    .toString();
+        } catch (JSONException e) {
+            return "{}";
+        }
+    }
+
+    /** The screensaver's settings from Frog Hub's settings screen (screensaver.js toApp). */
+    protected void applyScreensaver(String json) {
+        try {
+            JSONObject s = new JSONObject(json);
+            String mode = s.optString("mode", saverMode());
+            prefs.edit()
+                    .putBoolean("saver_on", s.optBoolean("enabled", false))
+                    .putString("saver_mode", Arrays.asList(SAVER_MODES).contains(mode) ? mode : saverMode())
+                    .putInt("saver_minutes", Math.max(1, Math.min(240, s.optInt("minutes", DEFAULT_SAVER_MINUTES))))
+                    .putBoolean("saver_hours", s.optBoolean("activeHours", false))
+                    .putString("saver_from", time(s.optString("from"), prefs.getString("saver_from", "07:00")))
+                    .putString("saver_to", time(s.optString("to"), prefs.getString("saver_to", "21:00")))
+                    .putBoolean("saver_dim", s.optBoolean("dim", true))
+                    .apply();
+        } catch (JSONException e) {
+            // a broken settings object from the page: keep the old settings
+        }
+    }
+
+    /** The screensaver came on (dim the backlight, if it's set to) or went (back to normal). */
+    protected void dimScreen(boolean on) {
+        runOnUiThread(() -> {
+            saverDimmed = on;
+            applyBrightness();
+        });
+    }
+
+    private String saverMode() {
+        String mode = prefs.getString("saver_mode", "clock");
+        return Arrays.asList(SAVER_MODES).contains(mode) ? mode : "clock";
+    }
+
+    private static String time(String typed, String fallback) {
+        String t = typed == null ? "" : typed.trim();
+        if (!TIME.matcher(t).matches()) return fallback;
+        return t.length() == 4 ? "0" + t : t; // 7:30 -> 07:30
+    }
+
+    /**
+     * The screensaver's idle minutes as the page will use them: it has to come on before the screen goes off, so a
+     * minute before (half a minute, with a one-minute screen-off) when it wouldn't. The same as screensaver.js.
+     */
+    static String saverStartsAfter(int saverMinutes, int screenOffMinutes) {
+        if (screenOffMinutes <= 0 || saverMinutes < screenOffMinutes) return saverMinutes + (saverMinutes == 1 ? " minute" : " minutes");
+        return screenOffMinutes > 1 ? (screenOffMinutes - 1) + (screenOffMinutes == 2 ? " minute" : " minutes") : "half a minute";
+    }
+
+    /** Settings changed in the five-tap dialog (the full app passes them on to its page). */
+    protected void settingsChanged() {
+    }
+
     /** A DLNA speaker called `name` for Music Assistant (see DlnaSpeaker), when Sendspin can't run here. */
     protected void startDlna(String name) {
         runOnUiThread(() -> {
@@ -200,8 +287,13 @@ public abstract class DisplayActivity extends Activity {
     private void sleep() {
         asleep = true;
         cover.setVisibility(View.VISIBLE);
+        applyBrightness();
+    }
+
+    /** Almost off while asleep, down while the screensaver dims it, otherwise the system's own brightness. */
+    private void applyBrightness() {
         WindowManager.LayoutParams lp = getWindow().getAttributes();
-        lp.screenBrightness = 0.01f;
+        lp.screenBrightness = asleep ? 0.01f : saverDimmed ? SAVER_BRIGHTNESS : WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE;
         getWindow().setAttributes(lp);
     }
 
@@ -209,10 +301,10 @@ public abstract class DisplayActivity extends Activity {
     protected void wake() {
         if (asleep) {
             asleep = false;
+            saverDimmed = false;
             cover.setVisibility(View.GONE);
-            WindowManager.LayoutParams lp = getWindow().getAttributes();
-            lp.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE; // back to the system brightness
-            getWindow().setAttributes(lp);
+            applyBrightness(); // back to the system brightness
+            callPage("frogHubWoke", "{}"); // the page's screensaver goes with the same tap
         }
         handler.removeCallbacks(sleep);
         if (dimMinutes() > 0) handler.postDelayed(sleep, dimMinutes() * 60_000L);
@@ -331,16 +423,95 @@ public abstract class DisplayActivity extends Activity {
         boot.setChecked(prefs.getBoolean("boot", false));
         box.addView(boot);
 
+        // The screensaver (drawn by the page, which reads these through FrogHubApp.getScreensaverSettings)
+        TextView saverTitle = new TextView(this);
+        saverTitle.setText("Screensaver");
+        saverTitle.setPadding(0, pad / 2, 0, 0);
+        saverTitle.setTextSize(16);
+        box.addView(saverTitle);
+        CheckBox saverOn = new CheckBox(this);
+        saverOn.setText("Screensaver when nobody's using it");
+        saverOn.setChecked(prefs.getBoolean("saver_on", false));
+        box.addView(saverOn);
+        Spinner saverMode = new Spinner(this);
+        ArrayAdapter<String> modes = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, SAVER_MODE_NAMES);
+        modes.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        saverMode.setAdapter(modes);
+        saverMode.setSelection(Arrays.asList(SAVER_MODES).indexOf(saverMode()));
+        box.addView(saverMode);
+        EditText saverMinutes = new EditText(this);
+        saverMinutes.setInputType(InputType.TYPE_CLASS_NUMBER);
+        saverMinutes.setHint("Screensaver after (idle minutes)");
+        saverMinutes.setText(String.valueOf(prefs.getInt("saver_minutes", DEFAULT_SAVER_MINUTES)));
+        box.addView(saverMinutes);
+        TextView saverNote = new TextView(this);
+        box.addView(saverNote);
+        CheckBox saverDim = new CheckBox(this);
+        saverDim.setText("Dim the screen while it's on");
+        saverDim.setChecked(prefs.getBoolean("saver_dim", true));
+        box.addView(saverDim);
+        CheckBox saverHours = new CheckBox(this);
+        saverHours.setText("Only between these times:");
+        saverHours.setChecked(prefs.getBoolean("saver_hours", false));
+        box.addView(saverHours);
+        LinearLayout hours = new LinearLayout(this);
+        hours.setOrientation(LinearLayout.HORIZONTAL);
+        EditText saverFrom = timeField(prefs.getString("saver_from", "07:00"), "from, e.g. 07:00");
+        EditText saverTo = timeField(prefs.getString("saver_to", "21:00"), "to, e.g. 21:00");
+        hours.addView(saverFrom, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        hours.addView(saverTo, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        box.addView(hours);
+
+        // It has to start before the screen goes off: say when it actually will
+        Runnable explain = () -> {
+            int saver = parseMinutes(saverMinutes.getText().toString(), DEFAULT_SAVER_MINUTES);
+            int off = parseMinutes(dim.getText().toString(), DEFAULT_DIM_MINUTES);
+            saverNote.setText(off > 0 && Math.max(1, saver) >= off
+                    ? "The screen goes off after " + off + (off == 1 ? " minute" : " minutes") + ", so the screensaver starts after "
+                            + saverStartsAfter(Math.max(1, saver), off) + " instead."
+                    : "");
+            saverNote.setVisibility(saverNote.getText().length() > 0 ? View.VISIBLE : View.GONE);
+        };
+        TextWatcher retell = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                explain.run();
+            }
+        };
+        saverMinutes.addTextChangedListener(retell);
+        dim.addTextChangedListener(retell);
+        explain.run();
+
+        ScrollView scroll = new ScrollView(this); // a short landscape screen can't show it all at once
+        scroll.addView(box);
+
         new AlertDialog.Builder(this)
                 .setTitle("Frog Hub")
-                .setView(box)
+                .setView(scroll)
                 .setPositiveButton("Save and reload", (d, w) -> {
                     String typed = address.getText().toString().trim();
+                    int mode = saverMode.getSelectedItemPosition();
                     prefs.edit()
                             .putString("url", typed.isEmpty() ? DEFAULT_URL : typed)
                             .putBoolean("boot", boot.isChecked())
-                            .putInt("dim_minutes", parseMinutes(dim.getText().toString()))
+                            .putInt("dim_minutes", parseMinutes(dim.getText().toString(), DEFAULT_DIM_MINUTES))
+                            .putBoolean("saver_on", saverOn.isChecked())
+                            .putString("saver_mode", SAVER_MODES[mode >= 0 && mode < SAVER_MODES.length ? mode : 0])
+                            .putInt("saver_minutes", Math.max(1, Math.min(240, parseMinutes(saverMinutes.getText().toString(), DEFAULT_SAVER_MINUTES))))
+                            .putBoolean("saver_dim", saverDim.isChecked())
+                            .putBoolean("saver_hours", saverHours.isChecked())
+                            .putString("saver_from", time(saverFrom.getText().toString(), prefs.getString("saver_from", "07:00")))
+                            .putString("saver_to", time(saverTo.getText().toString(), prefs.getString("saver_to", "21:00")))
                             .apply();
+                    settingsChanged();
                     load();
                     wake();
                 })
@@ -349,11 +520,19 @@ public abstract class DisplayActivity extends Activity {
                 .show();
     }
 
-    private static int parseMinutes(String typed) {
+    private EditText timeField(String value, String hint) {
+        EditText field = new EditText(this);
+        field.setInputType(InputType.TYPE_CLASS_DATETIME | InputType.TYPE_DATETIME_VARIATION_TIME);
+        field.setHint(hint);
+        field.setText(value);
+        return field;
+    }
+
+    private static int parseMinutes(String typed, int fallback) {
         try {
             return Math.max(0, Integer.parseInt(typed.trim()));
         } catch (NumberFormatException e) {
-            return DEFAULT_DIM_MINUTES;
+            return fallback;
         }
     }
 

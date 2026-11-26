@@ -251,6 +251,13 @@ public class GeckoActivity extends DisplayActivity {
                 applySettings(message.optString("json", "{}"));
                 sendSettings();
                 break;
+            case "setScreensaverSettings":
+                applyScreensaver(message.optString("json", "{}"));
+                sendSettings();
+                break;
+            case "dimScreen":
+                dimScreen(message.optBoolean("on"));
+                break;
             case "exit":
                 finish();
                 break;
@@ -281,10 +288,18 @@ public class GeckoActivity extends DisplayActivity {
 
     private void sendSettings() {
         try {
-            if (port != null) port.postMessage(new JSONObject().put("settings", settingsJson()).put("nativeMic", nativeMic));
+            if (port != null) {
+                port.postMessage(new JSONObject().put("settings", settingsJson()).put("screensaver", screensaverJson())
+                        .put("nativeMic", nativeMic));
+            }
         } catch (JSONException e) {
             // can't happen with a string
         }
+    }
+
+    @Override
+    protected void settingsChanged() {
+        sendSettings(); // the bridge keeps a copy for the page (it has to answer getScreensaverSettings() at once)
     }
 
     @Override

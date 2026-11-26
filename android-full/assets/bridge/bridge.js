@@ -7,6 +7,7 @@ let port = null
 // GeckoActivity sends the settings when the port opens and after every change, since getSettings() has to answer
 // at once and messages to the app can't.
 let settings = '{}'
+let screensaver = '' // the screensaver's settings, once the app has sent them ('' until then: the page uses its own)
 let nativeMic = false // whether the app records the mic for the page (Android 5, where GeckoView can't)
 
 function send(message) {
@@ -16,6 +17,7 @@ function send(message) {
 port = browser.runtime.connectNative('froghub')
 port.onMessage.addListener((message) => {
   if (message.settings) settings = message.settings
+  if (message.screensaver) screensaver = message.screensaver
   if ('nativeMic' in message) nativeMic = message.nativeMic
   if (message.call) {
     // GeckoActivity calling a function of the page's, such as frogHubDlna(state)
@@ -31,6 +33,9 @@ window.wrappedJSObject.FrogHubApp = cloneInto({
   wake: () => send({ type: 'wake' }),
   getSettings: () => settings,
   setSettings: (json) => send({ type: 'setSettings', json: String(json) }),
+  getScreensaverSettings: () => screensaver,
+  setScreensaverSettings: (json) => send({ type: 'setScreensaverSettings', json: String(json) }),
+  dimScreen: (on) => send({ type: 'dimScreen', on: !!on }),
   exit: () => send({ type: 'exit' }),
   startDlna: (name) => send({ type: 'startDlna', name: String(name) }),
   stopDlna: () => send({ type: 'stopDlna' }),

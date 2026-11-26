@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Frog Hub app bridge",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Gives Frog Hub's page window.FrogHubApp, as the WebView app does.",
   "browser_specific_settings": { "gecko": { "id": "bridge@froghub.party" } },
   "content_scripts": [{ "matches": ["<all_urls>"], "js": ["bridge.js"], "run_at": "document_start" }],
